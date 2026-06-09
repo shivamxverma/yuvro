@@ -23,7 +23,25 @@ export const TerminalManager = ({ socket }: { socket: Socket }) => {
         term.open(terminalRef.current);
         fitaddon.fit();
 
-        socket.emit("requestTerminal");
+        console.log("[Terminal useEffect] mounted", { socketConnected: socket?.connected, socketId: socket?.id });
+
+        const handleConnect = () => {
+            console.log("[Terminal handleConnect] Triggered requestTerminal", { socketId: socket?.id });
+            socket.emit("requestTerminal");
+            socket.emit('terminalData', {
+                data: '\n'
+            });
+        };
+
+        if (socket.connected) {
+            console.log("[Terminal useEffect] Socket already connected, calling handleConnect");
+            handleConnect();
+        }
+
+        socket.on("connect", () => {
+            console.log("[Terminal connect event] socket connect listener fired");
+            handleConnect();
+        });
         socket.on("terminal", terminalHandler);
 
         function terminalHandler({ data }: { data: ArrayBuffer | string }) {
@@ -44,11 +62,8 @@ export const TerminalManager = ({ socket }: { socket: Socket }) => {
             });
         });
 
-        socket.emit('terminalData', {
-            data: '\n'
-        });
-
         return () => {
+            socket.off("connect", handleConnect);
             socket.off("terminal", terminalHandler);
             term.dispose();
         }

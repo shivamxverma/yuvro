@@ -52,11 +52,13 @@ export function buildFileTree(data: RemoteFile[]): Directory {
   };
   // 将<id，目录对象>存入map
   dirs.forEach((item) => {
+    const parts = item.path.split("/");
+    const parentId = parts.length < 2 ? "0" : (dirs.find(x => x.path === parts.slice(0, -1).join("/"))?.path ?? "0");
     let dir: Directory = {
       id: item.path,
       name: item.name,
       path: item.path,
-      parentId: item.path.split("/").length === 2 ? "0" : dirs.find(x => x.path === item.path.split("/").slice(0, -1).join("/"))?.path,
+      parentId,
       type: Type.DIRECTORY,
       depth: 0,
       dirs: [],
@@ -67,11 +69,13 @@ export function buildFileTree(data: RemoteFile[]): Directory {
   });
   // 将<id，文件对象>存入map
   files.forEach((item) => {
+    const parts = item.path.split("/");
+    const parentId = parts.length < 2 ? "0" : (dirs.find(x => x.path === parts.slice(0, -1).join("/"))?.path ?? "0");
     let file: File = {
       id: item.path,
       name: item.name,
       path: item.path,
-      parentId: item.path.split("/").length === 2 ? "0" : dirs.find(x => x.path === item.path.split("/").slice(0, -1).join("/"))?.path,
+      parentId,
       type: Type.FILE,
       depth: 0
     };
@@ -85,9 +89,15 @@ export function buildFileTree(data: RemoteFile[]): Directory {
       else rootDir.files.push(value as File);
     } else {
       const parentDir = cache.get(value.parentId as string) as Directory;
-      if (value.type === Type.DIRECTORY)
-        parentDir.dirs.push(value as Directory);
-      else parentDir.files.push(value as File);
+      if (parentDir) {
+        if (value.type === Type.DIRECTORY)
+          parentDir.dirs.push(value as Directory);
+        else parentDir.files.push(value as File);
+      } else {
+        // Fallback: put in root if parent directory doesn't exist in cache
+        if (value.type === Type.DIRECTORY) rootDir.dirs.push(value as Directory);
+        else rootDir.files.push(value as File);
+      }
     }
   });
 

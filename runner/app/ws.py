@@ -2,7 +2,7 @@ import os
 import socketio
 from app.fs import BASE_DIR, fetch_dir, fetch_file_content, save_file
 from app.aws import save_to_s3
-from app.pty import TerminalManager
+from app.pty import TerminalManager, log_to_file
 
 terminal_manager = TerminalManager()
 
@@ -68,6 +68,7 @@ def init_ws(sio: socketio.AsyncServer):
 
     @sio.on("requestTerminal")
     async def on_request_terminal(sid):
+        log_to_file(f"[WS requestTerminal] Received for Sid: {sid}")
         async def on_terminal_output(decoded_output: str):
             await sio.emit("terminal", {"data": decoded_output}, to=sid)
             
@@ -75,9 +76,11 @@ def init_ws(sio: socketio.AsyncServer):
 
     @sio.on("terminalData")
     async def on_terminal_data(sid, data):
+        log_to_file(f"[WS TerminalData Received] Session: {sid}, Data: {data!r}")
         if isinstance(data, dict):
             typed_char = data.get("data", "")
         else:
             typed_char = data
             
+        log_to_file(f"[WS TerminalData Writing] Session: {sid}, Char: {typed_char!r}")
         terminal_manager.write(sid, typed_char)

@@ -23,4 +23,7 @@ application = get_wsgi_application()
 
 if __name__ == "__main__":
     from django.core.management import execute_from_command_line
-    execute_from_command_line(sys.argv)
+    args = sys.argv
+    if len(args) == 1:
+        args = args + ["runserver", "0.0.0.0:8000"]
+    execute_from_command_line(args)

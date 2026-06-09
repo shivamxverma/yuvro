@@ -11,7 +11,7 @@ function useSocket(replId: string) {
     const [socket, setSocket] = useState<Socket | null>(null);
 
     useEffect(() => {
-        const newSocket = io(`ws://${replId}.localhost:3001`);
+        const newSocket = io(`ws://${replId}.localhost:3002`);
         setSocket(newSocket);
 
         return () => {
@@ -82,6 +82,29 @@ export const CodingPagePostPodCreation = () => {
             });
         }
     };
+
+    const handleRun = () => {
+        console.log("handleRun clicked", { hasSocket: !!socket, selectedFile });
+        if (socket) {
+            socket.emit("terminalData", { data: "\x03" });
+            setTimeout(() => {
+                let runCommand = "python main.py";
+                if (selectedFile) {
+                    runCommand = `python ${selectedFile.path}`;
+                } else {
+                    const hasAppPy = fileStructure.some(f => f.name === "app.py" && f.type === "file");
+                    const hasManagePy = fileStructure.some(f => f.name === "manage.py" && f.type === "file");
+                    if (hasAppPy) {
+                        runCommand = "python app.py";
+                    } else if (hasManagePy) {
+                        runCommand = "python manage.py";
+                    }
+                }
+                console.log("Emitting command:", runCommand);
+                socket.emit("terminalData", { data: `${runCommand}\n` });
+            }, 200);
+        }
+    };
     
     if (!loaded) {
         return <>Loading...</>;
@@ -89,7 +112,13 @@ export const CodingPagePostPodCreation = () => {
 
     return (
         <div className="flex flex-col w-full h-screen">
-             <div className="flex justify-end p-2 bg-slate-900 border-b border-slate-800">
+             <div className="flex justify-end p-2 bg-slate-900 border-b border-slate-800 gap-2">
+                <button 
+                    onClick={handleRun}
+                    className="px-4 py-2 text-sm font-medium text-white bg-green-600 rounded hover:bg-green-700 transition"
+                >
+                    Run
+                </button>
                 <button 
                     onClick={() => setShowOutput(!showOutput)}
                     className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded hover:bg-blue-700 transition"
