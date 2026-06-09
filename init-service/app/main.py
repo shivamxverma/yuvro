@@ -32,7 +32,7 @@ def create_project(payload: ProjectCreate):
         )
 
     try:
-        copy_s3_folder(f"base/{language}", f"code/{repl_id}")
+        copy_s3_folder(f"yuvro/base/{language}", f"yuvro/code/{repl_id}")
         return "Project created"
     except Exception as e:
         raise HTTPException(
