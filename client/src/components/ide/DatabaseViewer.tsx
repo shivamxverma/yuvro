@@ -124,6 +124,8 @@ export function DatabaseViewer({ runnerPort, replId }: DatabaseViewerProps) {
     } catch (err: any) {
       console.error(err);
       setError(`Failed to read tables from connection.`);
+      setTables([]);
+      setSelectedTable("");
     } finally {
       setLoading(false);
     }
@@ -155,6 +157,9 @@ export function DatabaseViewer({ runnerPort, replId }: DatabaseViewerProps) {
     } catch (err: any) {
       console.error(err);
       setError(`Failed to fetch rows for table: ${selectedTable}`);
+      setRows([]);
+      setColumns([]);
+      setTotalRows(0);
     } finally {
       setLoading(false);
     }
@@ -176,6 +181,7 @@ export function DatabaseViewer({ runnerPort, replId }: DatabaseViewerProps) {
     } catch (err: any) {
       console.error(err);
       setError(`Failed to fetch schema for table: ${selectedTable}`);
+      setSchema([]);
     } finally {
       setLoading(false);
     }

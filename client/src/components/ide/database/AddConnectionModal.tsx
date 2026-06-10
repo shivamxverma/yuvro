@@ -190,7 +190,7 @@ export function AddConnectionModal({
               <input
                 id="modal-sqlite-path"
                 type="text"
-                placeholder="e.g. workspaces/my-repl/test.db"
+                placeholder="e.g. test.db"
                 value={sqlitePathVal}
                 onChange={(e) => setSqlitePathVal(e.target.value)}
                 required

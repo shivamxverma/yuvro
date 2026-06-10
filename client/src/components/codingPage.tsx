@@ -76,11 +76,20 @@ const IDEPage = ({ runnerPort }: { runnerPort: number }) => {
   const onSelect = (file: File) => {
     if (file.type === Type.DIRECTORY || (file as any).type === "dir") {
       socket?.emit("fetchDir", file.path, (data: RemoteFile[]) => mergeFiles(data));
-    } else {
-      socket?.emit("fetchContent", { path: file.path }, (data: string) => {
-        setSelectedFile({ ...file, content: data });
-      });
+      return;
     }
+
+    const ext = file.path.split('.').pop()?.toLowerCase();
+    const isDb = ["db", "sqlite", "sqlite3"].includes(ext || "");
+    if (isDb) {
+      setSelectedFile({ ...file, content: "BINARY_DB_FILE" });
+      setBottomTab("database");
+      return;
+    }
+
+    socket?.emit("fetchContent", { path: file.path }, (data: string) => {
+      setSelectedFile({ ...file, content: data });
+    });
   };
 
   const onCreate = (type: "file" | "folder", name: string, parentPath: string) => {

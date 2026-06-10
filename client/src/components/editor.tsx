@@ -8,7 +8,8 @@ import {
   Cpu, 
   Play, 
   Eye, 
-  PlusSquare
+  PlusSquare,
+  Database
 } from 'lucide-react';
 
 export const Editor = ({
@@ -127,6 +128,29 @@ export const Editor = ({
             <span>Python 3 Virtual Environment Ready</span>
           </div>
 
+        </div>
+      </div>
+    );
+  }
+
+  if (selectedFile.content === "BINARY_DB_FILE") {
+    return (
+      <div className="w-full h-full bg-[#030712] flex flex-col items-center justify-center p-8 text-center select-none overflow-y-auto">
+        <div className="max-w-md w-full flex flex-col items-center gap-6">
+          <div className="w-16 h-16 rounded-2xl bg-indigo-950/40 border border-indigo-500/20 flex items-center justify-center text-indigo-400 shadow-lg shadow-indigo-500/5">
+            <Database className="w-8 h-8" />
+          </div>
+          <div className="flex flex-col items-center gap-2">
+            <h2 className="text-lg font-bold text-slate-100 m-0">
+              {selectedFile.name}
+            </h2>
+            <p className="text-xs text-slate-400 leading-relaxed max-w-sm">
+              This is a binary SQLite database file. It cannot be opened or edited as a text file.
+            </p>
+            <p className="text-[11px] text-slate-500 max-w-xs leading-normal">
+              Please use the <strong>Database Viewer</strong> panel in the bottom tab to inspect its schema, run SQL queries, and browse its tables.
+            </p>
+          </div>
         </div>
       </div>
     );
