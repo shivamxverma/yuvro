@@ -27,7 +27,7 @@ export function Sidebar({
   onCreate,
   onDelete,
 }: SidebarProps) {
-  const [creating, setCreating] = useState<{ type: "file" | "folder" } | null>(null);
+  const [creating, setCreating] = useState<{ type: "file" | "folder"; parentPath: string } | null>(null);
   const [inputVal, setInputVal] = useState("");
   const [expandedDirs, setExpandedDirs] = useState<Set<string>>(new Set());
   const inputRef = useRef<HTMLInputElement>(null);
@@ -38,12 +38,22 @@ export function Sidebar({
 
   const rootFiles = files.filter((f) => !f.path.includes("/"));
 
+  const getActiveParentPath = (): string => {
+    if (!selectedPath) return "";
+    const selectedItem = files.find((f) => f.path === selectedPath);
+    if (selectedItem?.type === "dir" || (selectedItem as any)?.type === "dir") {
+      return selectedPath;
+    }
+    const lastSlash = selectedPath.lastIndexOf("/");
+    return lastSlash !== -1 ? selectedPath.substring(0, lastSlash) : "";
+  };
+
   const handleCreate = () => {
     if (!inputVal.trim()) {
       setCreating(null);
       return;
     }
-    onCreate(creating!.type, inputVal.trim(), "");
+    onCreate(creating!.type, inputVal.trim(), creating!.parentPath);
     setInputVal("");
     setCreating(null);
   };
@@ -68,7 +78,7 @@ export function Sidebar({
         </div>
         <div className="flex gap-1.5">
           <button
-            onClick={() => { setCreating({ type: "file" }); setInputVal(""); }}
+            onClick={() => { setCreating({ type: "file", parentPath: getActiveParentPath() }); setInputVal(""); }}
             aria-label="New File"
             title="New File"
             className="p-1 text-slate-400 hover:text-slate-200 hover:bg-slate-900 rounded-md cursor-pointer transition duration-150 outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
@@ -76,7 +86,7 @@ export function Sidebar({
             <FilePlus className="w-3.5 h-3.5" aria-hidden="true" />
           </button>
           <button
-            onClick={() => { setCreating({ type: "folder" }); setInputVal(""); }}
+            onClick={() => { setCreating({ type: "folder", parentPath: getActiveParentPath() }); setInputVal(""); }}
             aria-label="New Folder"
             title="New Folder"
             className="p-1 text-slate-400 hover:text-slate-200 hover:bg-slate-900 rounded-md cursor-pointer transition duration-150 outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
@@ -92,8 +102,8 @@ export function Sidebar({
         <span className="truncate font-mono">{replId}</span>
       </div>
 
-      {/* New file/folder input */}
-      {creating && (
+      {/* New file/folder input (root level) */}
+      {creating && creating.parentPath === "" && (
         <div className="px-3 py-1.5">
           <div className="flex items-center gap-2 bg-slate-950 border border-indigo-500/50 rounded-lg px-2.5 py-1.5">
             <span className="shrink-0 text-slate-400">
@@ -139,6 +149,11 @@ export function Sidebar({
               onDelete={onDelete}
               expandedDirs={expandedDirs}
               onToggleDir={toggleDir}
+              creating={creating}
+              setCreating={setCreating}
+              inputVal={inputVal}
+              setInputVal={setInputVal}
+              onCreate={onCreate}
             />
           ))
         )}

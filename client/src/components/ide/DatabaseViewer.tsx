@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import axios from "axios";
-import { Loader2 } from "lucide-react";
+import { Loader2, AlertCircle } from "lucide-react";
 import { DatabaseSidebar } from "./database/DatabaseSidebar";
 import { BrowseDataTab } from "./database/BrowseDataTab";
 import { SchemaTab } from "./database/SchemaTab";
@@ -306,7 +306,7 @@ export function DatabaseViewer({ runnerPort, replId }: DatabaseViewerProps) {
         <div className="flex-1 overflow-hidden relative flex flex-col">
           {error && (
             <div className="m-3 p-2.5 bg-red-950/20 border border-red-500/20 text-red-300 rounded text-xs flex items-center gap-2 shrink-0 animate-fade-in">
-              <Loader2 className="w-3.5 h-3.5 animate-spin text-red-400 shrink-0" />
+              <AlertCircle className="w-3.5 h-3.5 text-red-400 shrink-0" />
               <span>{error}</span>
             </div>
           )}

@@ -51,6 +51,7 @@ export const Output = ({ runnerPort }: { runnerPort: number }) => {
                     height="100%"
                     src={PROXY_URI}
                     title="App Preview"
+                    style={{ colorScheme: "light" }}
                 />
             </div>
         </div>
