@@ -200,6 +200,5 @@ You can test SQLite databases directly inside the workspace, or dynamically prov
 
 Below is a screen recording demonstrating the platform's workspace initialization, terminal execution, and the interactive SQLite database viewer:
 
-![Demo Video](./demo.mp4)
-*(Replace this video file path or embed link as needed once your walkthrough video is saved)*
+[Watch the Demo Video on Google Drive](https://drive.google.com/file/d/1--Tg6yNgQp1A2IOS2h6R4wI5CgFyHUav/view?usp=sharing)
 
