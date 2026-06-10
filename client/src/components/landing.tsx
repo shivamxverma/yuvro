@@ -26,11 +26,46 @@ function getRandomSlug() {
     return slug;
 }
 
+const PythonIcon = ({ className }: { className?: string }) => (
+    <svg className={className} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect width="24" height="24" rx="5.5" fill="#0C1524" />
+        <path d="M12 4.5c-2.48 0-2.86 1.07-2.86 2.37v1.48h2.9v.44H7.94c-1.24 0-2.14.95-2.14 2.14v3.42c0 1.2.95 2.14 2.14 2.14h1.18v-1.63c0-1.24.95-2.14 2.14-2.14h2.9c1.2 0 2.14-.95 2.14-2.14V7.94c0-1.2-.95-2.14-2.14-2.14H12c-.01 0 0-1.3-.01-1.3zm-1.07 1.11c.33 0 .6.27.6.6c0 .33-.27.6-.6.6a.6.6 0 0 1-.6-.6c0-.33.27-.6.6-.6z" fill="#3776AB" />
+        <path d="M12 19.5c2.48 0 2.86-1.07 2.86-2.37v-1.48h-2.9v-.44h4.1c1.24 0 2.14-.95 2.14-2.14V9.65c0-1.2-.95-2.14-2.14-2.14h-1.18v1.63c0 1.24-.95 2.14-2.14 2.14h-2.9c-1.2 0-2.14.95-2.14 2.14v2.71c0 1.2.95 2.14 2.14 2.14H12c.01 0 0 1.3.01 1.3zm1.07-1.11a.6.6 0 1 1 0-1.2.6.6 0 0 1 0 1.2z" fill="#FFE052" />
+    </svg>
+);
+
+const FastApiIcon = ({ className }: { className?: string }) => (
+    <svg className={className} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect width="24" height="24" rx="5.5" fill="#00211E" />
+        <path d="M12.5 4L6.5 13H11.5L10.5 20L17.5 11H12L13.5 4H12.5Z" fill="#FFFFFF" />
+        <path d="M11.5 4L5.5 13H10.5L9.5 20L16.5 11H11L12.5 4H11.5Z" fill="#009688" opacity="0.6" />
+        <path d="M12 4.5L6 13.5h5V20l6.5-9h-5l1.5-6.5z" stroke="#009688" strokeWidth="0.8" />
+    </svg>
+);
+
+const DjangoIcon = ({ className }: { className?: string }) => (
+    <svg className={className} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect width="24" height="24" rx="5.5" fill="#092E20" />
+        <path d="M14.5 5.5H13v5.5c-.5-.7-1.4-1.1-2.3-1.1-1.8 0-3.3 1.5-3.3 3.3s1.5 3.3 3.3 3.3c.9 0 1.8-.4 2.3-1.1V17.5h1.5v-12zm-3.8 10c-1 0-1.8-.8-1.8-1.8s.8-1.8 1.8-1.8 1.8.8 1.8 1.8-.8 1.8-1.8 1.8z" fill="#FFFFFF" />
+        <path d="M15 5.5h-2v5.5c-.7-.7-1.7-1.1-2.8-1.1-2.2 0-4 1.8-4 4s1.8 4 4 4c1.1 0 2.1-.4 2.8-1.1V18h2V5.5z" stroke="#44B78B" strokeWidth="0.8" opacity="0.5" />
+    </svg>
+);
+
+const FlaskIcon = ({ className }: { className?: string }) => (
+    <svg className={className} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect width="24" height="24" rx="5.5" fill="#1C1C1C" />
+        <path d="M15 5h-1V4h-4v1H9v5.2L5.8 16.6C5 18 6 19.5 7.6 19.5h8.8c1.6 0 2.6-1.5 1.8-2.9L15 10.2V5z" stroke="#FF5252" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+        <path d="M7.4 16.5h9.2l-1.6-2.8H9l-1.6 2.8z" fill="#FF5252" opacity="0.8" />
+        <circle cx="10" cy="13" r="0.8" fill="#FFF" opacity="0.6" />
+        <circle cx="13" cy="14" r="0.6" fill="#FFF" opacity="0.6" />
+    </svg>
+);
+
 const LANGUAGES = [
-    { value: "python", label: "Python", emoji: "🐍", color: "from-blue-600 to-yellow-500", desc: "Standard Python 3 backend environment" },
-    { value: "fastapi", label: "FastAPI", emoji: "⚡", color: "from-emerald-500 to-teal-400", desc: "High-performance Python web APIs" },
-    { value: "django", label: "Django", emoji: "🎸", color: "from-green-700 to-emerald-600", desc: "The web framework for perfectionists" },
-    { value: "flask", label: "Flask", emoji: "🌶️", color: "from-red-500 to-orange-500", desc: "Lightweight WSGI web application framework" },
+    { value: "python", label: "Python", icon: <PythonIcon className="w-full h-full" />, color: "from-blue-600 to-yellow-500", desc: "Standard Python 3 backend environment" },
+    { value: "fastapi", label: "FastAPI", icon: <FastApiIcon className="w-full h-full" />, color: "from-emerald-500 to-teal-400", desc: "High-performance Python web APIs" },
+    { value: "django", label: "Django", icon: <DjangoIcon className="w-full h-full" />, color: "from-green-700 to-emerald-600", desc: "The web framework for perfectionists" },
+    { value: "flask", label: "Flask", icon: <FlaskIcon className="w-full h-full" />, color: "from-red-500 to-orange-500", desc: "Lightweight WSGI web application framework" },
 ];
 
 export const LandingPage = () => {
@@ -270,9 +305,9 @@ export const LandingPage = () => {
                                                 }`}
                                             >
                                                 <div className="flex items-center gap-2.5">
-                                                    <span className="text-xl flex-shrink-0" role="img" aria-label={lang.label}>
-                                                        {lang.emoji}
-                                                    </span>
+                                                    <div className="w-8 h-8 flex-shrink-0 flex items-center justify-center rounded-lg overflow-hidden bg-slate-950/40 p-0.5 border border-slate-800/60">
+                                                        {lang.icon}
+                                                    </div>
                                                     <div>
                                                         <div className={`text-xs font-bold transition duration-150 ${
                                                             isSelected ? 'text-indigo-200' : 'text-slate-300'
