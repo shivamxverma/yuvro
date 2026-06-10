@@ -132,6 +132,10 @@ ENV/
 env.bak/
 venv.bak/
 
+
+templates
+workspaces
+
 # Spyder project settings
 .spyderproject
 .spyproject

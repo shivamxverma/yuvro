@@ -43,8 +43,19 @@ async def save_to_s3(key: str, file_path: str, content: str) -> None:
 def _download_sync(key: str, local_dir: str) -> None:
     try:
         if os.path.exists(local_dir):
-            shutil.rmtree(local_dir)
-        os.makedirs(local_dir, exist_ok=True)
+            for filename in os.listdir(local_dir):
+                if filename == ".venv":
+                    continue
+                file_path = os.path.join(local_dir, filename)
+                try:
+                    if os.path.isfile(file_path) or os.path.islink(file_path):
+                        os.unlink(file_path)
+                    elif os.path.isdir(file_path):
+                        shutil.rmtree(file_path)
+                except Exception as e:
+                    print(f"Failed to delete {file_path}: {e}")
+        else:
+            os.makedirs(local_dir, exist_ok=True)
 
         bucket = S3_BUCKET
         if not bucket:

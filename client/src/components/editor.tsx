@@ -15,12 +15,14 @@ export const Editor = ({
   files,
   onSelect,
   selectedFile,
-  socket
+  socket,
+  onSaveStatus,
 }: {
   files: RemoteFile[];
   onSelect: (file: File) => void;
   selectedFile: File | undefined;
   socket: Socket;
+  onSaveStatus?: (status: 'saving' | 'saved' | 'idle') => void;
 }) => {
   const rootDir = useMemo(() => {
     return buildFileTree(files);
@@ -132,7 +134,7 @@ export const Editor = ({
 
   return (
     <div className="w-full h-full">
-      <CodeEditor socket={socket} selectedFile={selectedFile} />
+      <CodeEditor socket={socket} selectedFile={selectedFile} onSaveStatus={onSaveStatus} />
     </div>
   );
 };

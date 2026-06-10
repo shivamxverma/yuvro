@@ -1,8 +1,15 @@
 import Editor from "@monaco-editor/react";
+import { useRef, useEffect } from "react";
 import { type File } from "../utils/file-manager";
 import { type Socket } from "socket.io-client";
 
-export const Code = ({ selectedFile, socket }: { selectedFile: File | undefined, socket: Socket }) => {
+interface CodeProps {
+    selectedFile: File | undefined;
+    socket: Socket;
+    onSaveStatus?: (status: 'saving' | 'saved' | 'idle') => void;
+}
+
+export const Code = ({ selectedFile, socket, onSaveStatus }: CodeProps) => {
     if (!selectedFile) return null;
 
     const code = selectedFile.content;
@@ -10,15 +17,47 @@ export const Code = ({ selectedFile, socket }: { selectedFile: File | undefined,
 
     if (language === "py") language = "python"
 
-    function debounce(func: (value: string | undefined) => void, wait: number) {
-        let timeout: any;
-        return (value: string | undefined) => {
-            clearTimeout(timeout);
-            timeout = setTimeout(() => {
-                func(value);
-            }, wait);
+    const latestContentRef = useRef<string>(code ?? "");
+    const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const filePath = selectedFile.path;
+
+    useEffect(() => {
+        latestContentRef.current = code ?? "";
+    }, [code]);
+
+    const saveContent = (value: string) => {
+        if (debounceTimerRef.current) {
+            clearTimeout(debounceTimerRef.current);
+            debounceTimerRef.current = null;
         }
-    }
+        onSaveStatus?.('saving');
+        socket.emit(
+            "updateContent",
+            { path: filePath, content: value },
+            (_ack: { ok?: boolean }) => {
+                onSaveStatus?.('saved');
+                setTimeout(() => onSaveStatus?.('idle'), 2000);
+            }
+        );
+    };
+
+    const debouncedSave = (value: string) => {
+        latestContentRef.current = value;
+        onSaveStatus?.('saving');
+        if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+        debounceTimerRef.current = setTimeout(() => {
+            saveContent(value);
+        }, 300);
+    };
+
+    const handleEditorMount = (_editor: any, monaco: any) => {
+        _editor.addCommand(
+            monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS,
+            () => {
+                saveContent(latestContentRef.current);
+            }
+        );
+    };
 
     return (
         <Editor
@@ -26,9 +65,10 @@ export const Code = ({ selectedFile, socket }: { selectedFile: File | undefined,
             language={language}
             value={code}
             theme="vs-dark"
-            onChange={debounce((value) => {
-                socket.emit("updateContent", { path: selectedFile.path, content: value || "" });
-            }, 500)}>
-        </Editor>
-    )
+            onMount={handleEditorMount}
+            onChange={(value) => {
+                debouncedSave(value ?? "");
+            }}
+        />
+    );
 }

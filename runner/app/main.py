@@ -13,6 +13,13 @@ from app.ws import init_ws
 from app.fs import BASE_DIR
 from app.aws import download_from_s3
 from app.pty import container_registry, get_container_host_port
+from app.db import (
+    discover_databases,
+    get_tables_with_counts,
+    get_table_schema,
+    get_table_rows,
+    run_custom_query,
+)
 
 app = FastAPI()
 
@@ -86,6 +93,51 @@ async def start_pod(payload: StartPayload):
     return {"status": "started", "message": f"Workspace initializing for {repl_id}"}
 
 
+class QueryPayload(BaseModel):
+    db_path: str
+    query: str
+
+@app.get("/api/db/list")
+async def list_dbs():
+    try:
+        dbs = await asyncio.to_thread(discover_databases)
+        return {"databases": dbs}
+    except Exception as e:
+        return Response(content=str(e), status_code=500)
+
+@app.get("/api/db/tables")
+async def list_db_tables(db_path: str):
+    try:
+        tables = await asyncio.to_thread(get_tables_with_counts, db_path)
+        return {"tables": tables}
+    except Exception as e:
+        return Response(content=str(e), status_code=500)
+
+@app.get("/api/db/schema")
+async def get_db_table_schema(db_path: str, table: str):
+    try:
+        schema = await asyncio.to_thread(get_table_schema, db_path, table)
+        return {"schema": schema}
+    except Exception as e:
+        return Response(content=str(e), status_code=500)
+
+@app.get("/api/db/rows")
+async def get_db_table_rows(db_path: str, table: str, page: int = 1, page_size: int = 50):
+    try:
+        rows, columns, total = await asyncio.to_thread(get_table_rows, db_path, table, page, page_size)
+        return {"rows": rows, "columns": columns, "total": total, "page": page, "page_size": page_size}
+    except Exception as e:
+        return Response(content=str(e), status_code=500)
+
+@app.post("/api/db/query")
+async def run_db_query(payload: QueryPayload):
+    try:
+        results, columns = await asyncio.to_thread(run_custom_query, payload.db_path, payload.query)
+        return {"results": results, "columns": columns}
+    except Exception as e:
+        return Response(content=str(e), status_code=400)
+
+
 @app.get("/port/{repl_id}")
 async def get_port(repl_id: str, container_port: int = 8000):
     """Return the host port Docker mapped to the container's port for a given replId."""
@@ -104,7 +156,7 @@ async def proxy(repl_id: str, path: str, request: Request, container_port: int =
     is_container = os.getenv("IS_CONTAINER") == "true"
     
     if is_container:
-        target_url = f"http://localhost:{container_port}/{path}"
+        target_url = f"http://127.0.0.1:{container_port}/{path}"
     else:
         container_name = container_registry.get(repl_id)
         if not container_name:
@@ -117,7 +169,7 @@ async def proxy(repl_id: str, path: str, request: Request, container_port: int =
                 status_code=503
             )
 
-        target_url = f"http://localhost:{host_port}/{path}"
+        target_url = f"http://127.0.0.1:{host_port}/{path}"
 
     query = request.url.query
     if query:
