@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react"
 import { Socket } from "socket.io-client";
 import { Terminal } from "xterm";
 import { FitAddon } from 'xterm-addon-fit';
+import "xterm/css/xterm.css";
 
 const OPTIONS_TERM = {
     cursorBlink: true,
@@ -28,9 +29,6 @@ export const TerminalManager = ({ socket }: { socket: Socket }) => {
         const handleConnect = () => {
             console.log("[Terminal handleConnect] Triggered requestTerminal", { socketId: socket?.id });
             socket.emit("requestTerminal");
-            socket.emit('terminalData', {
-                data: '\n'
-            });
         };
 
         if (socket.connected) {
@@ -70,6 +68,10 @@ export const TerminalManager = ({ socket }: { socket: Socket }) => {
 
     }, [terminalRef, socket])
 
-    return <div style={{ width: "40vw", height: "400px", textAlign: "left" }} ref={terminalRef}>
-    </div>
+    return (
+        <div
+            style={{ width: '100%', height: '100%', background: '#0a0f1e', textAlign: 'left' }}
+            ref={terminalRef}
+        />
+    );
 }

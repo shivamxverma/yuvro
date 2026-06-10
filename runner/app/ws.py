@@ -1,6 +1,6 @@
 import os
 import socketio
-from app.fs import BASE_DIR, fetch_dir, fetch_file_content, save_file
+from app.fs import BASE_DIR, fetch_dir, fetch_file_content, save_file, create_file, create_folder, delete_path
 from app.aws import save_to_s3
 from app.pty import TerminalManager, log_to_file
 
@@ -71,8 +71,11 @@ def init_ws(sio: socketio.AsyncServer):
         log_to_file(f"[WS requestTerminal] Received for Sid: {sid}")
         async def on_terminal_output(decoded_output: str):
             await sio.emit("terminal", {"data": decoded_output}, to=sid)
-            
-        terminal_manager.create_pty(sid, on_terminal_output)
+
+        async with sio.session(sid) as session:
+            repl_id = session.get("repl_id", "")
+
+        terminal_manager.create_pty(sid, on_terminal_output, repl_id=repl_id)
 
     @sio.on("terminalData")
     async def on_terminal_data(sid, data):
@@ -84,3 +87,34 @@ def init_ws(sio: socketio.AsyncServer):
             
         log_to_file(f"[WS TerminalData Writing] Session: {sid}, Char: {typed_char!r}")
         terminal_manager.write(sid, typed_char)
+
+    @sio.on("createFile")
+    async def on_create_file(sid, data):
+        file_path = data.get("path", "")
+        full_path = os.path.join(BASE_DIR, file_path)
+        await create_file(full_path)
+        # Return updated listing of the parent directory
+        parent = os.path.dirname(file_path)
+        parent_full = os.path.join(BASE_DIR, parent) if parent else BASE_DIR
+        contents = await fetch_dir(parent_full, parent)
+        return {"success": True, "dirContents": contents}
+
+    @sio.on("createFolder")
+    async def on_create_folder(sid, data):
+        folder_path = data.get("path", "")
+        full_path = os.path.join(BASE_DIR, folder_path)
+        await create_folder(full_path)
+        parent = os.path.dirname(folder_path)
+        parent_full = os.path.join(BASE_DIR, parent) if parent else BASE_DIR
+        contents = await fetch_dir(parent_full, parent)
+        return {"success": True, "dirContents": contents}
+
+    @sio.on("deletePath")
+    async def on_delete_path(sid, data):
+        path = data.get("path", "")
+        full_path = os.path.join(BASE_DIR, path)
+        await delete_path(full_path)
+        parent = os.path.dirname(path)
+        parent_full = os.path.join(BASE_DIR, parent) if parent else BASE_DIR
+        contents = await fetch_dir(parent_full, parent)
+        return {"success": True, "dirContents": contents}
