@@ -20,6 +20,7 @@ interface BottomPanelProps {
   runOutput: string;
   onClearOutput: () => void;
   runnerPort: number;
+  replId: string;
 }
 
 export function BottomPanel({
@@ -31,6 +32,7 @@ export function BottomPanel({
   runOutput,
   onClearOutput,
   runnerPort,
+  replId,
 }: BottomPanelProps) {
   return (
     <>
@@ -145,7 +147,7 @@ export function BottomPanel({
             aria-labelledby="tab-database"
             className={`absolute inset-0 ${activeTab === "database" ? "block" : "hidden"}`}
           >
-            <DatabaseViewer runnerPort={runnerPort} />
+            <DatabaseViewer runnerPort={runnerPort} replId={replId} />
           </div>
         </div>
       </div>

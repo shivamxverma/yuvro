@@ -1,4 +1,4 @@
-import { Play, Eye, CheckCircle2, Loader2 } from "lucide-react";
+import { Play, Square, RotateCw, Eye, CheckCircle2, Loader2 } from "lucide-react";
 import { type File } from "../external/editor/utils/file-manager";
 
 interface TopNavbarProps {
@@ -7,6 +7,9 @@ interface TopNavbarProps {
   saveStatus: "idle" | "saving" | "saved";
   bottomTab: "terminal" | "preview" | "output" | "database";
   onRun: () => void;
+  isRunning: boolean;
+  onStop: () => void;
+  onRestart: () => void;
   onTogglePreview: () => void;
 }
 
@@ -16,6 +19,9 @@ export function TopNavbar({
   saveStatus,
   bottomTab,
   onRun,
+  isRunning,
+  onStop,
+  onRestart,
   onTogglePreview,
 }: TopNavbarProps) {
   return (
@@ -64,14 +70,33 @@ export function TopNavbar({
           </div>
         )}
 
-        {/* Run button */}
-        <button
-          onClick={onRun}
-          className="flex items-center gap-1.5 px-3.5 py-1.5 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 border border-emerald-500/10 text-white text-[11px] font-bold tracking-wide rounded-md shadow-lg shadow-emerald-500/10 cursor-pointer transition duration-150 focus-visible:ring-2 focus-visible:ring-emerald-500 outline-none active:scale-[0.98]"
-        >
-          <Play className="w-3.5 h-3.5 fill-current" aria-hidden="true" />
-          <span>Run</span>
-        </button>
+        {/* Process control buttons */}
+        {!isRunning ? (
+          <button
+            onClick={onRun}
+            className="flex items-center gap-1.5 px-3.5 py-1.5 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 border border-emerald-500/10 text-white text-[11px] font-bold tracking-wide rounded-md shadow-lg shadow-emerald-500/10 cursor-pointer transition duration-150 focus-visible:ring-2 focus-visible:ring-emerald-500 outline-none active:scale-[0.98]"
+          >
+            <Play className="w-3.5 h-3.5 fill-current" aria-hidden="true" />
+            <span>Run</span>
+          </button>
+        ) : (
+          <div className="flex items-center gap-2">
+            <button
+              onClick={onRestart}
+              className="flex items-center gap-1 px-3 py-1.5 bg-slate-900 border border-slate-800 hover:bg-slate-800 hover:border-slate-700 text-slate-300 hover:text-slate-100 text-[11px] font-bold tracking-wide rounded-md cursor-pointer transition duration-150 focus-visible:ring-2 focus-visible:ring-indigo-500 outline-none"
+            >
+              <RotateCw className="w-3 h-3 text-indigo-400" aria-hidden="true" />
+              <span>Restart</span>
+            </button>
+            <button
+              onClick={onStop}
+              className="flex items-center gap-1.5 px-3.5 py-1.5 bg-gradient-to-r from-rose-500 to-red-500 hover:from-rose-600 hover:to-red-600 border border-rose-500/10 text-white text-[11px] font-bold tracking-wide rounded-md shadow-lg shadow-rose-500/10 cursor-pointer transition duration-150 focus-visible:ring-2 focus-visible:ring-rose-500 outline-none active:scale-[0.98]"
+            >
+              <Square className="w-3.5 h-3.5 fill-current" aria-hidden="true" />
+              <span>Stop</span>
+            </button>
+          </div>
+        )}
 
         {/* App Preview toggle */}
         <button

@@ -8,7 +8,7 @@ export const Output = ({ runnerPort }: { runnerPort: number }) => {
     const [containerPort, setContainerPort] = useState("8000");
     const [iframeKey, setIframeKey] = useState(0);
 
-    const PROXY_URI = `http://localhost:${runnerPort}/proxy/${replId}/?container_port=${containerPort}`;
+    const PROXY_URI = `http://localhost:${runnerPort}/proxy/${replId}/${containerPort}/`;
 
     const handleRefresh = useCallback(() => {
         setIframeKey(k => k + 1);

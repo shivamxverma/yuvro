@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
 import axios from "axios";
 import { type File, type RemoteFile, Type } from "./external/editor/utils/file-manager";
@@ -115,22 +115,75 @@ const IDEPage = ({ runnerPort }: { runnerPort: number }) => {
     return ".venv/bin/python main.py";
   };
 
+  const [isRunning, setIsRunning] = useState(false);
+  const runTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const captureOutputRef = useRef<((data: { data: string }) => void) | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (runTimeoutRef.current) clearTimeout(runTimeoutRef.current);
+      if (socket && captureOutputRef.current) {
+        socket.off("terminal", captureOutputRef.current);
+      }
+    };
+  }, [socket]);
+
   const handleRun = () => {
     if (!socket) return;
     setBottomTab("output");
     setRunOutput("⏳ Running…\n");
+    setIsRunning(true);
+
+    if (captureOutputRef.current) {
+      socket.off("terminal", captureOutputRef.current);
+    }
+    if (runTimeoutRef.current) {
+      clearTimeout(runTimeoutRef.current);
+    }
 
     const captureOutput = (data: { data: string }) => {
       setRunOutput((prev) => prev + data.data);
     };
+    captureOutputRef.current = captureOutput;
     socket.on("terminal", captureOutput);
     socket.emit("terminalData", { data: "\x03" });
 
-    setTimeout(() => {
+    runTimeoutRef.current = setTimeout(() => {
       const cmd = `.venv/bin/pip install -r requirements.txt -q 2>/dev/null; ${getRunCommand()}`;
       socket.emit("terminalData", { data: `${cmd}\n` });
-      setTimeout(() => socket.off("terminal", captureOutput), 10000);
+      
+      runTimeoutRef.current = setTimeout(() => {
+        if (captureOutputRef.current) {
+          socket.off("terminal", captureOutputRef.current);
+          captureOutputRef.current = null;
+        }
+      }, 10000);
     }, 300);
+  };
+
+  const handleStop = () => {
+    if (!socket) return;
+    setIsRunning(false);
+
+    if (runTimeoutRef.current) {
+      clearTimeout(runTimeoutRef.current);
+      runTimeoutRef.current = null;
+    }
+    if (captureOutputRef.current) {
+      socket.off("terminal", captureOutputRef.current);
+      captureOutputRef.current = null;
+    }
+
+    socket.emit("terminalData", { data: "\x03" });
+    socket.emit("terminalData", { data: "\x03" });
+    setRunOutput((prev) => prev + "\n🛑 Process stopped manually.\n");
+  };
+
+  const handleRestart = () => {
+    handleStop();
+    setTimeout(() => {
+      handleRun();
+    }, 450);
   };
 
   if (!loaded) return <WorkspaceLoadingScreen />;
@@ -143,6 +196,9 @@ const IDEPage = ({ runnerPort }: { runnerPort: number }) => {
         saveStatus={saveStatus}
         bottomTab={bottomTab}
         onRun={handleRun}
+        isRunning={isRunning}
+        onStop={handleStop}
+        onRestart={handleRestart}
         onTogglePreview={() => setBottomTab((t) => (t === "preview" ? "terminal" : "preview"))}
       />
 
@@ -195,6 +251,7 @@ const IDEPage = ({ runnerPort }: { runnerPort: number }) => {
             runOutput={runOutput}
             onClearOutput={() => setRunOutput("")}
             runnerPort={runnerPort}
+            replId={replId}
           />
         </div>
       </main>

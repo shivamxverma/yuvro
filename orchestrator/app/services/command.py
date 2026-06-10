@@ -22,7 +22,8 @@ def get_run_container_cmd(
     runner_port: int,
     user_port: int,
     env_vars: dict,
-    image_name: str
+    image_name: str,
+    network: str = None
 ) -> List[str]:
     """Build command to run a container with dynamic port bindings and environment injection."""
     cmd = [
@@ -32,6 +33,8 @@ def get_run_container_cmd(
         "-p", f"0:{runner_port}",
         "-p", f"0:{user_port}",
     ]
+    if network:
+        cmd.extend(["--network", network])
     for key, val in env_vars.items():
         cmd.extend(["-e", f"{key}={val}"])
     cmd.append(image_name)

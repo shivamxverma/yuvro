@@ -17,3 +17,9 @@ app.add_middleware(
 )
 
 app.include_router(router)
+
+@app.on_event("startup")
+async def startup_event():
+    import asyncio
+    from app.routes import db_garbage_collector_loop
+    asyncio.create_task(db_garbage_collector_loop())

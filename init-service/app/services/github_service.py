@@ -42,14 +42,9 @@ def clone_github_and_upload(github_url: str, repl_id: str) -> dict:
     """
     Clone a public GitHub repository into a temp directory,
     upload all files to S3 under yuvro/code/{repl_id}/,
-    then clean up the temp directory.
-
-    Returns a dict with status and file count.
+    and also copy them directly to the local workspaces directory on the host filesystem.
     """
     bucket = settings.s3_bucket
-    if not bucket:
-        raise RuntimeError("S3_BUCKET environment variable is not configured.")
-
     tmp_dir = tempfile.mkdtemp(prefix="yuvro_clone_")
     try:
         # git clone into tmp_dir/repo
@@ -68,12 +63,41 @@ def clone_github_and_upload(github_url: str, repl_id: str) -> dict:
             )
         print("[Clone] Clone successful.")
 
-        # Upload to S3
+        # Try Upload to S3
+        uploaded_count = 0
         s3_prefix = f"yuvro/code/{repl_id}"
-        count = _upload_directory_to_s3(clone_target, s3_prefix, bucket)
+        if bucket:
+            try:
+                uploaded_count = _upload_directory_to_s3(clone_target, s3_prefix, bucket)
+                print(f"[Clone] Uploaded {uploaded_count} files to s3://{bucket}/{s3_prefix}/")
+            except Exception as e:
+                print(f"[Clone] Warning: S3 upload failed: {e}")
+        else:
+            print("[Clone] S3_BUCKET is not configured, skipping S3 upload.")
 
-        print(f"[Clone] Uploaded {count} files to s3://{bucket}/{s3_prefix}/")
-        return {"status": "cloned", "files_uploaded": count, "s3_prefix": s3_prefix}
+        # Local fallback/sync copy to spaces dir on the host
+        local_workspace_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../workspaces", repl_id))
+        os.makedirs(local_workspace_dir, exist_ok=True)
+        
+        local_files_copied = 0
+        for item in os.listdir(clone_target):
+            s = os.path.join(clone_target, item)
+            d = os.path.join(local_workspace_dir, item)
+            if os.path.isdir(s):
+                if item != ".git":
+                    shutil.copytree(s, d, dirs_exist_ok=True)
+                    local_files_copied += 1
+            else:
+                shutil.copy2(s, d)
+                local_files_copied += 1
+                
+        print(f"[Clone] Copied cloned project files directly to local workspace directory: {local_workspace_dir}")
+        return {
+            "status": "cloned",
+            "files_uploaded": uploaded_count,
+            "s3_prefix": s3_prefix if bucket else "",
+            "local_files_copied": local_files_copied
+        }
 
     finally:
         shutil.rmtree(tmp_dir, ignore_errors=True)
