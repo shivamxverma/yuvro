@@ -15,11 +15,12 @@ WORKDIR /runner-app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy runner app code
+# Copy runner app code and scripts
 COPY app ./app
+COPY scripts ./scripts
 
 # Append custom cd wrapper to /etc/bash.bashrc and /root/.bashrc to prevent directory escaping and set prompt
-RUN cat /runner-app/app/cd_wrapper.sh >> /etc/bash.bashrc && cat /runner-app/app/cd_wrapper.sh >> /root/.bashrc
+RUN cat /runner-app/scripts/cd_wrapper.sh >> /etc/bash.bashrc && cat /runner-app/scripts/cd_wrapper.sh >> /root/.bashrc
 
 # Expose the internal port for the runner API
 EXPOSE 3002

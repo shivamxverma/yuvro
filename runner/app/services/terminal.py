@@ -3,19 +3,10 @@ import pty
 import asyncio
 import shutil
 import subprocess
-import json
 from typing import Dict, Callable, Optional
-from app.fs import BASE_DIR
+from app.core.config import BASE_DIR, log_to_file
 
-# Maps replId -> container_name for proxy lookups
 container_registry: Dict[str, str] = {}
-
-def log_to_file(msg: str):
-    try:
-        with open("/Users/shivamverma/Desktop/personal-work/replit/yuvro-assignment/runner/runner.log", "a", encoding="utf-8") as f:
-            f.write(msg + "\n")
-    except Exception:
-        pass
 
 def get_container_host_port(container_name: str, container_port: int = 8000) -> Optional[int]:
     """Ask Docker what host port maps to container_port for the given container."""
@@ -172,4 +163,3 @@ class TerminalManager:
                 except Exception as e:
                     log_to_file(f"[PTY Clear Error] docker rm failed: {e}")
                     pass
-        

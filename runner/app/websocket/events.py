@@ -1,9 +1,10 @@
 import os
 import asyncio
 import socketio
-from app.fs import BASE_DIR, fetch_dir, fetch_file_content, save_file, create_file, create_folder, delete_path
-from app.aws import save_to_s3
-from app.pty import TerminalManager, log_to_file
+from app.core.config import BASE_DIR, log_to_file
+from app.services.fs import fetch_dir, fetch_file_content, save_file, create_file, create_folder, delete_path
+from app.services.s3 import save_to_s3
+from app.services.terminal import TerminalManager
 
 terminal_manager = TerminalManager()
 
@@ -11,7 +12,6 @@ def init_ws(sio: socketio.AsyncServer):
     
     @sio.event
     async def connect(sid, environ):
-        # Primary: read replId from Socket.IO query param (sent by client)
         query_string = environ.get('QUERY_STRING', '')
         repl_id = ''
         for part in query_string.split('&'):
@@ -19,7 +19,6 @@ def init_ws(sio: socketio.AsyncServer):
                 repl_id = part[len('replId='):]
                 break
 
-        # Fallback: try to extract from Host header subdomain (legacy)
         if not repl_id:
             host = environ.get('HTTP_HOST', '')
             if not host:
@@ -70,17 +69,14 @@ def init_ws(sio: socketio.AsyncServer):
         content = data.get("content", "")
         full_path = os.path.join(BASE_DIR, file_path)
         
-        # Save to disk first (fast, blocking)
         await save_file(full_path, content)
         
-        # Fire-and-forget S3 upload in background (non-blocking)
         async with sio.session(sid) as session:
             repl_id = session.get("repl_id", "")
             
         if repl_id:
             asyncio.ensure_future(save_to_s3(f"yuvro/code/{repl_id}", file_path, content))
         
-        # Acknowledge save to client so it can show "Saved" indicator
         return {"ok": True}
 
     @sio.on("requestTerminal")
@@ -110,7 +106,6 @@ def init_ws(sio: socketio.AsyncServer):
         file_path = data.get("path", "")
         full_path = os.path.join(BASE_DIR, file_path)
         await create_file(full_path)
-        # Return updated listing of the parent directory
         parent = os.path.dirname(file_path)
         parent_full = os.path.join(BASE_DIR, parent) if parent else BASE_DIR
         contents = await fetch_dir(parent_full, parent)

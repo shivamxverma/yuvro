@@ -1,13 +1,10 @@
 import os
 import sqlite3
 from typing import List, Dict, Any, Tuple
-
-# We import BASE_DIR from app.fs
-from app.fs import BASE_DIR
+from app.core.config import BASE_DIR
 
 def get_safe_db_path(relative_path: str) -> str:
     """Resolve and validate the DB path to ensure it is within BASE_DIR."""
-    # Clean paths
     relative_path = relative_path.lstrip("/")
     abs_path = os.path.abspath(os.path.join(BASE_DIR, relative_path))
     

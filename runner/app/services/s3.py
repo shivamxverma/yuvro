@@ -1,12 +1,9 @@
 import os
 import asyncio
+import shutil
 import boto3
 from botocore.exceptions import NoCredentialsError, PartialCredentialsError
-
-S3_BUCKET = os.getenv("S3_BUCKET", "")
-AWS_ACCESS_KEY_ID = os.getenv("AWS_ACCESS_KEY_ID")
-AWS_SECRET_ACCESS_KEY = os.getenv("AWS_SECRET_ACCESS_KEY")
-S3_ENDPOINT = os.getenv("S3_ENDPOINT")
+from app.core.config import S3_BUCKET, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, S3_ENDPOINT
 
 s3_client = boto3.client(
     "s3",
@@ -15,10 +12,7 @@ s3_client = boto3.client(
     endpoint_url=S3_ENDPOINT
 )
 
-import shutil
-
 def _upload_sync(key: str, file_path: str, content: str) -> None:
-
     if file_path.startswith("/"):
         s3_key = f"{key}{file_path}"
     else:
@@ -33,7 +27,6 @@ def _upload_sync(key: str, file_path: str, content: str) -> None:
         print(f"Successfully backed up {file_path} to S3 Key: {s3_key}")
     except (NoCredentialsError, PartialCredentialsError):
         print(f"[Warning] AWS Credentials not configured. Skipping S3 backup for {file_path}.")
-
     except Exception as e:
         print(f"[Error] Failed to save {file_path} to S3: {e}")
     
@@ -84,4 +77,3 @@ def _download_sync(key: str, local_dir: str) -> None:
 
 async def download_from_s3(key: str, local_dir: str) -> None:
     await asyncio.to_thread(_download_sync, key, local_dir)
-

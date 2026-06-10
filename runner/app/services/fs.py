@@ -1,9 +1,7 @@
 import os
 import asyncio
 from typing import List, Dict
-
-BASE_DIR = os.getenv("BASE_DIR",
-os.path.abspath(os.path.join(os.path.dirname(__file__), "../workspace")))
+from app.core.config import BASE_DIR
 
 os.makedirs(BASE_DIR, exist_ok=True)
 
