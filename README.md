@@ -10,16 +10,7 @@ Yuvro is built as a distributed microservice system comprising a React-based fro
 
 ### High-Level Components Flow
 
-```mermaid
-graph TD
-    Client[React Client Frontend] -->|1. Start Workspace| Orchestrator[Orchestrator Service :3002]
-    Client -->|4. Sync Files & PTY / WebSockets| Runner[Containerized Runner Pod]
-    Client -->|5. DB REST API & App Preview Proxy| Runner
-    Orchestrator -->|2. Spin up & Map Ports| Runner
-    Orchestrator -->|3. Trigger Startup Init| Runner
-    InitService[Initialization Service :3001] -->|A. Create Template / Clone Git| S3[(S3 Object Storage)]
-    Runner -->|B. Sync Project Files| S3
-```
+![Yuvro IDE Architecture Diagram](./architecture.png)
 
 ---
 
@@ -61,14 +52,6 @@ graph TD
     - `GET /api/db/schema` — Inspects the schema for columns, types, primary keys, and nullability.
     - `GET /api/db/rows` — Retrieves paginated table rows.
     - `POST /api/db/query` — Runs read-only custom SQL queries.
-
----
-
-## Architectural Design Diagram
-Below is the visual architecture diagram drawn for this project:
-
-![Yuvro IDE Architecture Diagram](./architecture.png)
-*(Replace this image file path as needed once the Excalidraw design is exported to the root directory)*
 
 ---
 
