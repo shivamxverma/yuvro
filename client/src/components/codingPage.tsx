@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from "react";
-import { useSearchParams } from "react-router-dom";
+import { Navigate, useSearchParams } from "react-router-dom";
 import axios from "axios";
 import { type File, type RemoteFile, Type } from "./external/editor/utils/file-manager";
 import { Editor } from "./editor";
@@ -10,17 +10,21 @@ import { TopNavbar } from "./ide/TopNavbar";
 import { BottomPanel } from "./ide/BottomPanel";
 import { StatusBar } from "./ide/StatusBar";
 import { BootingScreen, WorkspaceLoadingScreen } from "./ide/LoadingScreens";
+import { ORCHESTRATOR_URL } from "../lib/api";
+import { useAuth } from "../auth/AuthContext";
 
 export const CodingPage = () => {
+  const { user } = useAuth();
   const [podCreated, setPodCreated] = useState(false);
   const [runnerPort, setRunnerPort] = useState<number | null>(null);
   const [searchParams] = useSearchParams();
   const replId = searchParams.get("replId") ?? "";
 
   useEffect(() => {
+    if (!user) return;
     if (!replId) return;
     axios
-      .post(`http://localhost:3002/start`, { replId })
+      .post(`${ORCHESTRATOR_URL}/start`, { replId })
       .then((res) => {
         setRunnerPort(res.data.port || 3002);
         setPodCreated(true);
@@ -30,7 +34,9 @@ export const CodingPage = () => {
         setRunnerPort(3002);
         setPodCreated(true);
       });
-  }, [replId]);
+  }, [replId, user]);
+
+  if (!user) return <Navigate to="/" replace />;
 
   if (!podCreated || !runnerPort) return <BootingScreen />;
   return <IDEPage runnerPort={runnerPort} />;

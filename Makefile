@@ -2,11 +2,11 @@
 
 init-service:
 	@echo "Starting init-service on port 3001..."
-	cd init-service && ./.venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 3001 --reload
+	cd init-service && ./.venv/bin/python -m uvicorn app.main:app --host 0.0.0.0 --port 3001 --reload
 
 runner:
 	@echo "Starting orchestrator on port 3002..."
-	cd orchestrator && ./.venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 3002 --reload
+	cd orchestrator && ./.venv/bin/python -m uvicorn app.main:app --host 0.0.0.0 --port 3002 --reload
 
 client:
 	@echo "Starting client on port 5173..."

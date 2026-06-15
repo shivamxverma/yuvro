@@ -7,8 +7,11 @@ import {
   Sparkles, 
   ArrowRight,
   AlertCircle,
-  HelpCircle
+  HelpCircle,
+  LogOut
 } from 'lucide-react';
+import { useAuth } from '../auth/AuthContext';
+import { INIT_SERVICE_URL } from '../lib/api';
 
 const Github = ({ className }: { className?: string }) => (
     <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor" className={className}>
@@ -69,6 +72,7 @@ const LANGUAGES = [
 ];
 
 export const LandingPage = () => {
+    const { user, signOut } = useAuth();
     const [tab, setTab] = useState<'create' | 'clone'>('create');
     const [language, setLanguage] = useState("python");
     const [replId, setReplId] = useState(getRandomSlug());
@@ -100,8 +104,9 @@ export const LandingPage = () => {
         }
         setLoading(true);
         try {
-            const response = await fetch("http://localhost:3001/project", {
+            const response = await fetch(`${INIT_SERVICE_URL}/project`, {
                 method: "POST",
+                credentials: "include",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ replId: replId.trim(), language }),
             });
@@ -135,8 +140,9 @@ export const LandingPage = () => {
         }
         setLoading(true);
         try {
-            const response = await fetch("http://localhost:3001/clone", {
+            const response = await fetch(`${INIT_SERVICE_URL}/clone`, {
                 method: "POST",
+                credentials: "include",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ replId: cloneReplId.trim(), githubUrl: url }),
             });
@@ -177,6 +183,17 @@ export const LandingPage = () => {
                     <p className="text-slate-400 text-sm mt-2 max-w-sm">
                         Instantly prototype and execute python applications in isolated cloud containers.
                     </p>
+                    <div className="mt-4 flex items-center gap-3 rounded-full border border-slate-800 bg-slate-950/70 px-4 py-2 text-xs text-slate-300">
+                        <span className="truncate max-w-[220px]">{user?.displayName || user?.email}</span>
+                        <button
+                            type="button"
+                            onClick={() => { void signOut(); }}
+                            className="inline-flex items-center gap-1 text-slate-400 transition hover:text-white"
+                        >
+                            <LogOut className="w-3.5 h-3.5" />
+                            <span>Sign out</span>
+                        </button>
+                    </div>
                 </div>
 
                 {/* Main Card Container */}

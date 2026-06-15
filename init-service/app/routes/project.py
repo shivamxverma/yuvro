@@ -1,11 +1,13 @@
 from fastapi import APIRouter, HTTPException, status
 from app.schemas.project import ProjectCreate, GitCloneCreate
 from app.controllers import project_controller
+from app.routes.auth import require_current_user
+from fastapi import Depends
 
 router = APIRouter()
 
 @router.post("/project", status_code=status.HTTP_200_OK)
-def create_project_route(payload: ProjectCreate):
+def create_project_route(payload: ProjectCreate, user: dict = Depends(require_current_user)):
     """
     Endpoint to initialize a new project by copying templates inside S3.
     """
@@ -19,7 +21,7 @@ def create_project_route(payload: ProjectCreate):
         )
 
     try:
-        return project_controller.create_project(repl_id, language)
+        return project_controller.create_project(user["id"], repl_id, language)
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -27,7 +29,7 @@ def create_project_route(payload: ProjectCreate):
         )
 
 @router.post("/clone", status_code=status.HTTP_200_OK)
-def clone_project_route(payload: GitCloneCreate):
+def clone_project_route(payload: GitCloneCreate, user: dict = Depends(require_current_user)):
     """
     Clone a public GitHub repository and store it in S3 as a new project.
     """
@@ -51,7 +53,7 @@ def clone_project_route(payload: GitCloneCreate):
         )
 
     try:
-        return project_controller.clone_project(repl_id, github_url)
+        return project_controller.clone_project(user["id"], repl_id, github_url)
     except RuntimeError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
