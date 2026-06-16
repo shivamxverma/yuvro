@@ -4,7 +4,6 @@ import subprocess
 import httpx
 from fastapi import Request, Response
 from app.core.config import BASE_DIR
-from app.services.s3 import download_from_s3
 from app.services.terminal import container_registry, get_container_host_port
 
 def setup_virtualenv_bg(base_dir: str):
@@ -49,16 +48,10 @@ def setup_virtualenv_bg(base_dir: str):
     except Exception as e:
         print(f"[BG setup_virtualenv Error] Failed: {e}")
 
-async def start_pod(repl_id: str):
-    # S3 download — fast or fails fast
-    try:
-        await download_from_s3(f"yuvro/code/{repl_id}", BASE_DIR)
-    except Exception as e:
-        print(f"[Start] S3 download skipped: {e}")
-
+async def start_pod(project_id: str):
     # Always run venv setup in background (non-blocking)
     asyncio.get_event_loop().run_in_executor(None, setup_virtualenv_bg, BASE_DIR)
-    return {"status": "started", "message": f"Workspace initializing for {repl_id}"}
+    return {"status": "started", "message": f"Workspace initializing for {project_id}"}
 
 async def get_port(repl_id: str, container_port: int):
     container_name = container_registry.get(repl_id)

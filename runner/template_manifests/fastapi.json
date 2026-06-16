@@ -1,0 +1,18 @@
+{
+  "directories": [],
+  "files": [
+    {
+      "contentHash": "931c225744856af7c7e0afeee2fecf4e890dff565782dcbbb73295b9397e55ef",
+      "path": "main.py",
+      "sizeBytes": 236
+    },
+    {
+      "contentHash": "e9af2913de609d1de45b2fbab270c5a77281543c4dab6d1dd182f221fd04f683",
+      "path": "requirements.txt",
+      "sizeBytes": 16
+    }
+  ],
+  "generatedAt": "2026-06-16T04:02:37.768959+00:00",
+  "templateType": "fastapi",
+  "version": 1
+}

@@ -5,7 +5,8 @@ import { Server, X, Loader2, Database } from "lucide-react";
 interface AddConnectionModalProps {
   isOpen: boolean;
   onClose: () => void;
-  replId: string;
+  projectId: string;
+  workspaceId: string;
   runnerPort: number;
   onSaveConnectionSuccess: (newConnId: string) => void;
 }
@@ -13,13 +14,14 @@ interface AddConnectionModalProps {
 export function AddConnectionModal({
   isOpen,
   onClose,
-  replId,
+  projectId,
+  workspaceId,
   runnerPort,
   onSaveConnectionSuccess,
 }: AddConnectionModalProps) {
   const [dbType, setDbType] = useState<"postgres" | "mysql" | "sqlite">("postgres");
   const [connName, setConnName] = useState("");
-  const [hostVal, setHostVal] = useState("yuvro-db-" + replId);
+  const [hostVal, setHostVal] = useState("yuvro-db-" + projectId);
   const [portVal, setPortVal] = useState("5432");
   const [userVal, setUserVal] = useState("postgres");
   const [passVal, setPassVal] = useState("secret");
@@ -38,11 +40,11 @@ export function AddConnectionModal({
     if (type === "postgres") {
       setPortVal("5432");
       setUserVal("postgres");
-      setHostVal("yuvro-db-" + replId);
+      setHostVal("yuvro-db-" + projectId);
     } else if (type === "mysql") {
       setPortVal("3306");
       setUserVal("root");
-      setHostVal("yuvro-db-" + replId);
+      setHostVal("yuvro-db-" + projectId);
     }
   };
 
@@ -84,7 +86,8 @@ export function AddConnectionModal({
     try {
       // POST to Orchestrator to start container on network
       const res = await axios.post("http://localhost:3002/db/start", {
-        replId,
+        workspaceId,
+        projectId,
         engine: dbType,
       });
 
@@ -92,7 +95,7 @@ export function AddConnectionModal({
       if (creds.status === "started") {
         // Register connection details inside runner
         const registerPayload = {
-          name: `Containerized ${dbType.toUpperCase()} (${replId})`,
+          name: `Containerized ${dbType.toUpperCase()} (${projectId})`,
           type: dbType,
           host: creds.host,
           port: creds.port,

@@ -20,7 +20,8 @@ interface BottomPanelProps {
   runOutput: string;
   onClearOutput: () => void;
   runnerPort: number;
-  replId: string;
+  projectId: string;
+  workspaceId: string;
 }
 
 export function BottomPanel({
@@ -32,7 +33,8 @@ export function BottomPanel({
   runOutput,
   onClearOutput,
   runnerPort,
-  replId,
+  projectId,
+  workspaceId,
 }: BottomPanelProps) {
   return (
     <>
@@ -137,7 +139,7 @@ export function BottomPanel({
             aria-labelledby="tab-preview"
             className={`absolute inset-0 ${activeTab === "preview" ? "block" : "hidden"}`}
           >
-            <Output runnerPort={runnerPort} />
+            <Output runnerPort={runnerPort} projectId={projectId} />
           </div>
 
           {/* Database Viewer panel */}
@@ -147,7 +149,7 @@ export function BottomPanel({
             aria-labelledby="tab-database"
             className={`absolute inset-0 ${activeTab === "database" ? "block" : "hidden"}`}
           >
-            <DatabaseViewer runnerPort={runnerPort} replId={replId} />
+            <DatabaseViewer runnerPort={runnerPort} projectId={projectId} workspaceId={workspaceId} />
           </div>
         </div>
       </div>

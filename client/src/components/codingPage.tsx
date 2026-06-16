@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Navigate, useSearchParams } from "react-router-dom";
 import axios from "axios";
 import { type File, type RemoteFile, Type } from "./external/editor/utils/file-manager";
@@ -10,21 +10,65 @@ import { TopNavbar } from "./ide/TopNavbar";
 import { BottomPanel } from "./ide/BottomPanel";
 import { StatusBar } from "./ide/StatusBar";
 import { BootingScreen, WorkspaceLoadingScreen } from "./ide/LoadingScreens";
-import { ORCHESTRATOR_URL } from "../lib/api";
+import { INIT_SERVICE_URL, ORCHESTRATOR_URL } from "../lib/api";
 import { useAuth } from "../auth/AuthContext";
+
+type ProjectDetail = {
+  workspace: { id: string; name: string };
+  project: { id: string; name: string; type: string };
+  rootNode: { id: string };
+};
+
+type NodePayload = {
+  id: string;
+  parentId: string | null;
+  type: "FILE" | "FOLDER";
+  name: string;
+  path: string;
+  isRoot?: boolean;
+};
+
+function toEditorFile(node: NodePayload, content?: string): File {
+  return {
+    id: node.id,
+    name: node.name,
+    path: node.path,
+    parentId: node.parentId,
+    type: node.type === "FOLDER" ? Type.DIRECTORY : Type.FILE,
+    depth: 0,
+    content,
+  };
+}
+
+function collectDescendantIds(nodes: RemoteFile[], rootId: string): Set<string> {
+  const ids = new Set<string>([rootId]);
+  let changed = true;
+
+  while (changed) {
+    changed = false;
+    for (const node of nodes) {
+      if (node.parentId && ids.has(node.parentId) && !ids.has(node.id)) {
+        ids.add(node.id);
+        changed = true;
+      }
+    }
+  }
+
+  return ids;
+}
 
 export const CodingPage = () => {
   const { user } = useAuth();
   const [podCreated, setPodCreated] = useState(false);
   const [runnerPort, setRunnerPort] = useState<number | null>(null);
   const [searchParams] = useSearchParams();
-  const replId = searchParams.get("replId") ?? "";
+  const workspaceId = searchParams.get("workspaceId") ?? "";
+  const projectId = searchParams.get("projectId") ?? "";
 
   useEffect(() => {
-    if (!user) return;
-    if (!replId) return;
+    if (!user || !workspaceId || !projectId) return;
     axios
-      .post(`${ORCHESTRATOR_URL}/start`, { replId })
+      .post(`${ORCHESTRATOR_URL}/start`, { workspaceId, projectId })
       .then((res) => {
         setRunnerPort(res.data.port || 3002);
         setPodCreated(true);
@@ -34,99 +78,210 @@ export const CodingPage = () => {
         setRunnerPort(3002);
         setPodCreated(true);
       });
-  }, [replId, user]);
+  }, [workspaceId, projectId, user]);
 
   if (!user) return <Navigate to="/" replace />;
-
+  if (!workspaceId || !projectId) return <Navigate to="/" replace />;
   if (!podCreated || !runnerPort) return <BootingScreen />;
-  return <IDEPage runnerPort={runnerPort} />;
+
+  return <IDEPage runnerPort={runnerPort} workspaceId={workspaceId} projectId={projectId} />;
 };
 
-const IDEPage = ({ runnerPort }: { runnerPort: number }) => {
-  const [searchParams] = useSearchParams();
-  const replId = searchParams.get("replId") ?? "";
-
+const IDEPage = ({
+  runnerPort,
+  workspaceId,
+  projectId,
+}: {
+  runnerPort: number;
+  workspaceId: string;
+  projectId: string;
+}) => {
   const [loaded, setLoaded] = useState(false);
   const [fileStructure, setFileStructure] = useState<RemoteFile[]>([]);
+  const [projectName, setProjectName] = useState("");
+  const [projectType, setProjectType] = useState("");
+  const [rootNodeId, setRootNodeId] = useState("");
+  const [selectedNodeId, setSelectedNodeId] = useState<string | undefined>(undefined);
   const [selectedFile, setSelectedFile] = useState<File | undefined>(undefined);
+  const [loadedDirectoryIds, setLoadedDirectoryIds] = useState<Set<string>>(new Set());
   const [bottomTab, setBottomTab] = useState<"terminal" | "preview" | "output" | "database">("terminal");
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved">("idle");
   const [runOutput, setRunOutput] = useState<string>("");
+  const loadedDirectoryIdsRef = useRef<Set<string>>(new Set());
 
-  const socket = useSocket(replId, runnerPort);
+  const socket = useSocket(projectId, runnerPort);
   const sidebar = useResize("horizontal", 230, 150, 420);
   const terminal = useResize("vertical", 240, 100, 600);
 
   useEffect(() => {
-    if (!socket) return;
-    socket.on("loaded", ({ rootContent }: { rootContent: RemoteFile[] }) => {
-      setLoaded(true);
-      setFileStructure(rootContent);
-    });
-    return () => { socket.off("loaded"); };
-  }, [socket]);
+    loadedDirectoryIdsRef.current = loadedDirectoryIds;
+  }, [loadedDirectoryIds]);
 
-  const mergeFiles = (incoming: RemoteFile[]) => {
+  const mergeChildren = (parentId: string, children: RemoteFile[]) => {
     setFileStructure((prev) => {
-      const map = new Map(prev.map((f) => [f.path, f]));
-      incoming.forEach((f) => map.set(f.path, f));
-      return Array.from(map.values());
+      const nextChildIds = new Set(children.map((child) => child.id));
+      const staleChildIds = prev
+        .filter((node) => node.parentId === parentId && !nextChildIds.has(node.id))
+        .map((node) => node.id);
+
+      const idsToRemove = new Set<string>();
+      for (const childId of staleChildIds) {
+        for (const descendantId of collectDescendantIds(prev, childId)) {
+          idsToRemove.add(descendantId);
+        }
+      }
+
+      const survivors = prev.filter(
+        (node) => node.parentId !== parentId && !idsToRemove.has(node.id)
+      );
+      return [...survivors, ...children];
     });
   };
 
-  const removeFiles = (removedPaths: RemoteFile[]) => {
-    const removed = new Set(removedPaths.map((f) => f.path));
-    setFileStructure((prev) => prev.filter((f) => !removed.has(f.path)));
-  };
-
-  const onSelect = (file: File) => {
-    if (file.type === Type.DIRECTORY || (file as any).type === "dir") {
-      socket?.emit("fetchDir", file.path, (data: RemoteFile[]) => mergeFiles(data));
+  const fetchChildren = async (nodeId: string, force = false) => {
+    if (!force && loadedDirectoryIdsRef.current.has(nodeId)) {
       return;
     }
 
-    const ext = file.path.split('.').pop()?.toLowerCase();
+    const response = await fetch(`${INIT_SERVICE_URL}/nodes/${nodeId}/children`, {
+      credentials: "include",
+    });
+    if (!response.ok) {
+      throw new Error("Failed to load folder contents.");
+    }
+
+    const payload = (await response.json()) as { nodes: RemoteFile[] };
+    mergeChildren(nodeId, payload.nodes);
+    setLoadedDirectoryIds((prev) => {
+      const next = new Set(prev);
+      next.add(nodeId);
+      return next;
+    });
+  };
+
+  const fetchProjectState = async () => {
+    setLoaded(false);
+    const projectRes = await fetch(`${INIT_SERVICE_URL}/projects/${projectId}`, {
+      credentials: "include",
+    });
+    if (!projectRes.ok) {
+      throw new Error("Failed to load project.");
+    }
+    const detail = (await projectRes.json()) as ProjectDetail;
+    setProjectName(detail.project.name);
+    setProjectType(detail.project.type);
+    setRootNodeId(detail.rootNode.id);
+    setFileStructure([]);
+    setLoadedDirectoryIds(new Set());
+    loadedDirectoryIdsRef.current = new Set();
+    await fetchChildren(detail.rootNode.id, true);
+    setLoaded(true);
+  };
+
+  useEffect(() => {
+    void fetchProjectState().catch((err) => {
+      console.error(err);
+    });
+  }, [projectId]);
+
+  useEffect(() => {
+    if (!selectedNodeId) return;
+    const exists = fileStructure.some((node) => node.id === selectedNodeId);
+    if (!exists) {
+      setSelectedNodeId(undefined);
+      setSelectedFile(undefined);
+    }
+  }, [fileStructure, selectedNodeId]);
+
+  const onSelect = async (file: File) => {
+    setSelectedNodeId(file.id);
+    const isDirectory = file.type === Type.DIRECTORY || (file as unknown as { type?: string }).type === "FOLDER";
+    if (isDirectory) {
+      setSelectedFile(undefined);
+      return;
+    }
+
+    const ext = file.path.split(".").pop()?.toLowerCase();
     const isDb = ["db", "sqlite", "sqlite3"].includes(ext || "");
     if (isDb) {
-      setSelectedFile({ ...file, content: "BINARY_DB_FILE" });
+      setSelectedFile({ ...toEditorFile(file as unknown as NodePayload), content: "BINARY_DB_FILE" });
       setBottomTab("database");
       return;
     }
 
-    socket?.emit("fetchContent", { path: file.path }, (data: string) => {
-      setSelectedFile({ ...file, content: data });
+    const response = await fetch(`${INIT_SERVICE_URL}/nodes/${file.id}/content`, {
+      credentials: "include",
     });
+    if (!response.ok) {
+      return;
+    }
+    const payload = await response.json();
+    setSelectedFile(toEditorFile(payload.node, payload.content));
   };
 
-  const onCreate = (type: "file" | "folder", name: string, parentPath: string) => {
-    const fullPath = parentPath ? `${parentPath}/${name}` : name;
-    const event = type === "file" ? "createFile" : "createFolder";
-    socket?.emit(event, { path: fullPath }, (res: { success: boolean; dirContents: RemoteFile[] }) => {
-      if (res?.success) mergeFiles(res.dirContents);
+  const onCreate = async (type: "file" | "folder", name: string, parentId: string) => {
+    await fetch(`${INIT_SERVICE_URL}/nodes`, {
+      method: "POST",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        parent_id: parentId,
+        name,
+        type: type === "file" ? "FILE" : "FOLDER",
+      }),
     });
+    await fetchChildren(parentId, true);
   };
 
-  const onDelete = (path: string) => {
-    socket?.emit("deletePath", { path }, (res: { success: boolean; dirContents: RemoteFile[] }) => {
-      if (res?.success) {
-        removeFiles(res.dirContents);
-        setFileStructure((prev) =>
-          prev.filter((f) => f.path !== path && !f.path.startsWith(path + "/"))
-        );
-        if (selectedFile?.path === path) setSelectedFile(undefined);
+  const onDelete = async (nodeId: string) => {
+    await fetch(`${INIT_SERVICE_URL}/nodes/${nodeId}`, {
+      method: "DELETE",
+      credentials: "include",
+    });
+    const removedIds = collectDescendantIds(fileStructure, nodeId);
+    setFileStructure((prev) => {
+      return prev.filter((node) => !removedIds.has(node.id));
+    });
+    setLoadedDirectoryIds((prev) => {
+      const next = new Set(prev);
+      for (const removedId of removedIds) {
+        next.delete(removedId);
       }
+      return next;
     });
+    if (selectedNodeId === nodeId) {
+      setSelectedNodeId(undefined);
+      setSelectedFile(undefined);
+    }
   };
+
+  const handleSave = async (nodeId: string, content: string) => {
+    const response = await fetch(`${INIT_SERVICE_URL}/nodes/${nodeId}/content`, {
+      method: "PUT",
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ content }),
+    });
+    if (!response.ok) {
+      throw new Error("Failed to save file.");
+    }
+    setSelectedFile((prev) => (prev ? { ...prev, content } : prev));
+  };
+
+  const rootLevelFiles = useMemo(
+    () => fileStructure.filter((f) => f.parentId === rootNodeId && f.type === "FILE"),
+    [fileStructure, rootNodeId]
+  );
 
   const getRunCommand = (): string => {
-    if (selectedFile) return `.venv/bin/python ${selectedFile.path}`;
-    const lower = replId.toLowerCase();
-    if (lower.startsWith("fastapi")) return ".venv/bin/uvicorn main:app --host 0.0.0.0 --port 8000 --reload";
-    if (lower.startsWith("django")) return ".venv/bin/python manage.py runserver 0.0.0.0:8000";
-    if (lower.startsWith("flask")) return ".venv/bin/python app.py";
-    const root = fileStructure.filter((f) => f.type === "file" && !f.path.includes("/"));
-    if (root.some((f) => f.name === "manage.py")) return ".venv/bin/python manage.py runserver 0.0.0.0:8000";
-    if (root.some((f) => f.name === "app.py")) return ".venv/bin/python app.py";
+    if (selectedFile && selectedFile.type === Type.FILE) {
+      return `.venv/bin/python ${selectedFile.path.replace(/^\//, "")}`;
+    }
+    if (projectType === "fastapi") return ".venv/bin/uvicorn main:app --host 0.0.0.0 --port 8000 --reload";
+    if (projectType === "django") return ".venv/bin/python manage.py runserver 0.0.0.0:8000";
+    if (projectType === "flask") return ".venv/bin/python app.py";
+    if (rootLevelFiles.some((f) => f.name === "manage.py")) return ".venv/bin/python manage.py runserver 0.0.0.0:8000";
+    if (rootLevelFiles.some((f) => f.name === "app.py")) return ".venv/bin/python app.py";
     return ".venv/bin/python main.py";
   };
 
@@ -166,7 +321,7 @@ const IDEPage = ({ runnerPort }: { runnerPort: number }) => {
     runTimeoutRef.current = setTimeout(() => {
       const cmd = `.venv/bin/pip install -r requirements.txt -q 2>/dev/null; ${getRunCommand()}`;
       socket.emit("terminalData", { data: `${cmd}\n` });
-      
+
       runTimeoutRef.current = setTimeout(() => {
         if (captureOutputRef.current) {
           socket.off("terminal", captureOutputRef.current);
@@ -201,12 +356,12 @@ const IDEPage = ({ runnerPort }: { runnerPort: number }) => {
     }, 450);
   };
 
-  if (!loaded) return <WorkspaceLoadingScreen />;
+  if (!loaded || !rootNodeId) return <WorkspaceLoadingScreen />;
 
   return (
     <div className="flex flex-col w-screen h-screen bg-[#030712] text-slate-100 font-sans overflow-hidden">
       <TopNavbar
-        replId={replId}
+        projectLabel={projectName || projectId}
         selectedFile={selectedFile}
         saveStatus={saveStatus}
         bottomTab={bottomTab}
@@ -223,11 +378,19 @@ const IDEPage = ({ runnerPort }: { runnerPort: number }) => {
             <div style={{ width: sidebar.size, minWidth: sidebar.size }} className="shrink-0 flex">
               <Sidebar
                 files={fileStructure}
-                selectedPath={selectedFile?.path}
-                replId={replId}
-                onSelect={onSelect}
-                onCreate={onCreate}
-                onDelete={onDelete}
+                selectedNodeId={selectedNodeId}
+                projectLabel={projectName || projectId}
+                rootNodeId={rootNodeId}
+                onSelect={(file) => {
+                  void onSelect(file);
+                }}
+                onExpand={(nodeId) => fetchChildren(nodeId)}
+                onCreate={(type, name, parentId) => {
+                  void onCreate(type, name, parentId);
+                }}
+                onDelete={(nodeId) => {
+                  void onDelete(nodeId);
+                }}
               />
             </div>
             <div
@@ -242,19 +405,15 @@ const IDEPage = ({ runnerPort }: { runnerPort: number }) => {
 
         <div className="flex-1 flex flex-col overflow-hidden min-w-0">
           <div className="flex-1 overflow-hidden relative">
-            {socket ? (
-              <Editor
-                socket={socket}
-                selectedFile={selectedFile}
-                onSelect={onSelect}
-                files={fileStructure}
-                onSaveStatus={setSaveStatus}
-              />
-            ) : (
-              <div className="flex items-center justify-center h-full text-slate-500 font-medium text-xs">
-                Connecting to editor service…
-              </div>
-            )}
+            <Editor
+              selectedFile={selectedFile}
+              onSelect={(file) => {
+                void onSelect(file);
+              }}
+              files={fileStructure}
+              onSaveStatus={setSaveStatus}
+              onSave={handleSave}
+            />
           </div>
 
           <BottomPanel
@@ -266,12 +425,13 @@ const IDEPage = ({ runnerPort }: { runnerPort: number }) => {
             runOutput={runOutput}
             onClearOutput={() => setRunOutput("")}
             runnerPort={runnerPort}
-            replId={replId}
+            projectId={projectId}
+            workspaceId={workspaceId}
           />
         </div>
       </main>
 
-      <StatusBar replId={replId} selectedFile={selectedFile} />
+      <StatusBar projectLabel={projectName || projectId} selectedFile={selectedFile} />
     </div>
   );
 };

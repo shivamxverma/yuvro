@@ -1,5 +1,7 @@
+import base64
 import hashlib
 import hmac
+import json
 import secrets
 import uuid
 from datetime import UTC, datetime, timedelta
@@ -11,7 +13,7 @@ from sqlalchemy.orm import joinedload
 
 from app.config import settings
 from app.db import session_scope
-from app.models.auth import AuthIdentity, AuthSession, User
+from app.models.auth import AuthMethod, User
 
 
 def _now() -> datetime:
@@ -56,23 +58,53 @@ def _verify_password(password: str, encoded: str) -> bool:
     return hmac.compare_digest(derived.hex(), digest)
 
 
-def _hash_session_token(token: str) -> str:
-    return hashlib.sha256(token.encode("utf-8")).hexdigest()
+def _token_expiry() -> datetime:
+    return _now() + timedelta(days=settings.auth_token_ttl_days)
 
 
-def _session_expiry() -> datetime:
-    return _now() + timedelta(days=settings.auth_session_ttl_days)
+def _sign(value: str) -> str:
+    digest = hmac.new(
+        settings.auth_secret_key.encode("utf-8"),
+        value.encode("utf-8"),
+        hashlib.sha256,
+    ).digest()
+    return base64.urlsafe_b64encode(digest).decode("utf-8").rstrip("=")
 
 
-def _serialize_user(row) -> dict:
+def _encode_token(payload: dict) -> str:
+    raw = json.dumps(payload, separators=(",", ":"), sort_keys=True).encode("utf-8")
+    encoded_payload = base64.urlsafe_b64encode(raw).decode("utf-8").rstrip("=")
+    return f"{encoded_payload}.{_sign(encoded_payload)}"
+
+
+def _decode_token(token: str) -> dict | None:
+    try:
+        encoded_payload, signature = token.split(".", 1)
+    except ValueError:
+        return None
+    if not hmac.compare_digest(signature, _sign(encoded_payload)):
+        return None
+    padding = "=" * (-len(encoded_payload) % 4)
+    try:
+        raw = base64.urlsafe_b64decode(encoded_payload + padding)
+        payload = json.loads(raw.decode("utf-8"))
+    except Exception:
+        return None
+    exp = payload.get("exp")
+    if not isinstance(exp, int) or exp <= int(_now().timestamp()):
+        return None
+    return payload
+
+
+def _serialize_user(row: User) -> dict:
     return {
         "id": row.id,
         "email": row.email,
-        "displayName": row.display_name,
+        "name": row.name,
     }
 
 
-def _set_session_cookie(response: Response, token: str, expires_at: datetime) -> None:
+def _set_auth_cookie(response: Response, token: str, expires_at: datetime) -> None:
     response.set_cookie(
         key=settings.auth_cookie_name,
         value=token,
@@ -85,7 +117,7 @@ def _set_session_cookie(response: Response, token: str, expires_at: datetime) ->
     )
 
 
-def _clear_session_cookie(response: Response) -> None:
+def _clear_auth_cookie(response: Response) -> None:
     response.delete_cookie(
         key=settings.auth_cookie_name,
         httponly=True,
@@ -95,12 +127,12 @@ def _clear_session_cookie(response: Response) -> None:
     )
 
 
-def create_user(email: str, password: str, display_name: str | None) -> dict:
+def create_user(email: str, password: str, name: str | None) -> dict:
     normalized_email = _normalize_email(email)
     password_hash = _hash_password(password)
     now = _now()
     user_id = str(uuid.uuid4())
-    identity_id = str(uuid.uuid4())
+    auth_method_id = str(uuid.uuid4())
 
     with session_scope() as session:
         existing = session.scalar(select(User.id).where(User.email == normalized_email))
@@ -113,20 +145,20 @@ def create_user(email: str, password: str, display_name: str | None) -> dict:
         user = User(
             id=user_id,
             email=normalized_email,
-            display_name=display_name,
+            name=name.strip() if name else None,
             created_at=now,
             updated_at=now,
         )
-        identity = AuthIdentity(
-            id=identity_id,
+        auth_method = AuthMethod(
+            id=auth_method_id,
             user_id=user_id,
             provider="password",
-            provider_subject=normalized_email,
+            provider_user_id=normalized_email,
             password_hash=password_hash,
             created_at=now,
         )
         session.add(user)
-        session.add(identity)
+        session.add(auth_method)
         try:
             session.flush()
         except IntegrityError:
@@ -141,60 +173,41 @@ def create_user(email: str, password: str, display_name: str | None) -> dict:
 def authenticate_user(email: str, password: str) -> dict:
     normalized_email = _normalize_email(email)
     with session_scope() as session:
-        identity = session.scalar(
-            select(AuthIdentity)
-            .options(joinedload(AuthIdentity.user))
+        auth_method = session.scalar(
+            select(AuthMethod)
+            .options(joinedload(AuthMethod.user))
             .where(
-                AuthIdentity.provider == "password",
-                AuthIdentity.provider_subject == normalized_email,
+                AuthMethod.provider == "password",
+                AuthMethod.provider_user_id == normalized_email,
             )
         )
 
-    if not identity or not identity.password_hash or not _verify_password(password, identity.password_hash):
+    if not auth_method or not auth_method.password_hash or not _verify_password(password, auth_method.password_hash):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid email or password.",
         )
 
-    return _serialize_user(identity.user)
+    return _serialize_user(auth_method.user)
 
 
 def create_session(response: Response, user_id: str) -> None:
-    session_id = str(uuid.uuid4())
-    token = secrets.token_urlsafe(32)
-    token_hash = _hash_session_token(token)
-    now = _now()
-    expires_at = _session_expiry()
-
-    with session_scope() as session:
-        session.add(
-            AuthSession(
-                id=session_id,
-                user_id=user_id,
-                token_hash=token_hash,
-                created_at=now,
-                expires_at=expires_at,
-                last_seen_at=now,
-            )
-        )
-
-    _set_session_cookie(response, token, expires_at)
+    expires_at = _token_expiry()
+    token = _encode_token(
+        {
+            "sub": user_id,
+            "exp": int(expires_at.timestamp()),
+        }
+    )
+    _set_auth_cookie(response, token, expires_at)
 
 
 def destroy_session(response: Response, request: Request) -> None:
-    token = request.cookies.get(settings.auth_cookie_name)
-    if token:
-        token_hash = _hash_session_token(token)
-        with session_scope() as session:
-            auth_session = session.scalar(
-                select(AuthSession).where(AuthSession.token_hash == token_hash)
-            )
-            if auth_session:
-                session.delete(auth_session)
-    _clear_session_cookie(response)
+    _clear_auth_cookie(response)
 
 
 def get_current_user(request: Request, touch_session: bool = True) -> dict:
+    del touch_session
     token = request.cookies.get(settings.auth_cookie_name)
     if not token:
         raise HTTPException(
@@ -202,30 +215,27 @@ def get_current_user(request: Request, touch_session: bool = True) -> dict:
             detail="Authentication required.",
         )
 
-    token_hash = _hash_session_token(token)
-    now = _now()
-
-    with session_scope() as session:
-        auth_session = session.scalar(
-            select(AuthSession)
-            .options(joinedload(AuthSession.user))
-            .where(AuthSession.token_hash == token_hash)
+    payload = _decode_token(token)
+    if not payload:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authentication required.",
         )
 
-        if not auth_session:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Authentication required.",
-            )
+    user_id = payload.get("sub")
+    if not isinstance(user_id, str):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authentication required.",
+        )
 
-        if auth_session.expires_at <= now:
-            session.delete(auth_session)
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Session expired.",
-            )
+    with session_scope() as session:
+        user = session.get(User, user_id)
 
-        if touch_session:
-            auth_session.last_seen_at = now
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Authentication required.",
+        )
 
-    return _serialize_user(auth_session.user)
+    return _serialize_user(user)

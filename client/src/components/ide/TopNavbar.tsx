@@ -2,7 +2,7 @@ import { Play, Square, RotateCw, Eye, CheckCircle2, Loader2 } from "lucide-react
 import { type File } from "../external/editor/utils/file-manager";
 
 interface TopNavbarProps {
-  replId: string;
+  projectLabel: string;
   selectedFile: File | undefined;
   saveStatus: "idle" | "saving" | "saved";
   bottomTab: "terminal" | "preview" | "output" | "database";
@@ -14,7 +14,7 @@ interface TopNavbarProps {
 }
 
 export function TopNavbar({
-  replId,
+  projectLabel,
   selectedFile,
   saveStatus,
   bottomTab,
@@ -33,7 +33,7 @@ export function TopNavbar({
         </div>
         <span className="text-slate-700 text-xs">/</span>
         <span className="text-slate-400 text-xs font-mono font-semibold max-w-[120px] truncate">
-          {replId}
+          {projectLabel}
         </span>
         {selectedFile && (
           <>

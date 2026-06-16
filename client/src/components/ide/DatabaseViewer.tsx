@@ -9,7 +9,8 @@ import { AddConnectionModal } from "./database/AddConnectionModal";
 
 interface DatabaseViewerProps {
   runnerPort: number;
-  replId: string;
+  projectId: string;
+  workspaceId: string;
 }
 
 interface DbConnection {
@@ -37,7 +38,7 @@ interface ColumnSchema {
   pk: boolean;
 }
 
-export function DatabaseViewer({ runnerPort, replId }: DatabaseViewerProps) {
+export function DatabaseViewer({ runnerPort, projectId, workspaceId }: DatabaseViewerProps) {
   // DB Catalog State
   const [dbList, setDbList] = useState<DbConnection[]>([]);
   const [selectedDb, setSelectedDb] = useState<string>("");
@@ -353,11 +354,12 @@ export function DatabaseViewer({ runnerPort, replId }: DatabaseViewerProps) {
       </div>
 
       {/* 3. Connection Modal */}
-      <AddConnectionModal
-        isOpen={isAddingConnection}
-        onClose={() => setIsAddingConnection(false)}
-        replId={replId}
-        runnerPort={runnerPort}
+        <AddConnectionModal
+          isOpen={isAddingConnection}
+          onClose={() => setIsAddingConnection(false)}
+          projectId={projectId}
+          workspaceId={workspaceId}
+          runnerPort={runnerPort}
         onSaveConnectionSuccess={async (newId) => {
           await fetchDatabases();
           setSelectedDb(newId);

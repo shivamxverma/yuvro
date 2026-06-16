@@ -16,24 +16,26 @@ interface FileNodeProps {
   file: RemoteFile;
   depth: number;
   allFiles: RemoteFile[];
-  selectedPath: string | undefined;
+  selectedNodeId: string | undefined;
   onSelect: (f: File) => void;
-  onDelete: (path: string) => void;
+  onExpand: (nodeId: string) => Promise<void>;
+  onDelete: (nodeId: string) => void;
   expandedDirs: Set<string>;
-  onToggleDir: (path: string) => void;
-  creating: { type: "file" | "folder"; parentPath: string } | null;
-  setCreating: (val: { type: "file" | "folder"; parentPath: string } | null) => void;
+  onToggleDir: (nodeId: string) => void;
+  creating: { type: "file" | "folder"; parentId: string } | null;
+  setCreating: (val: { type: "file" | "folder"; parentId: string } | null) => void;
   inputVal: string;
   setInputVal: (val: string) => void;
-  onCreate: (type: "file" | "folder", name: string, parentPath: string) => void;
+  onCreate: (type: "file" | "folder", name: string, parentId: string) => void;
 }
 
 export function FileNode({
   file,
   depth,
   allFiles,
-  selectedPath,
+  selectedNodeId,
   onSelect,
+  onExpand,
   onDelete,
   expandedDirs,
   onToggleDir,
@@ -44,24 +46,19 @@ export function FileNode({
   onCreate,
 }: FileNodeProps) {
   const [hovered, setHovered] = useState(false);
-  const isDir = file.type === "dir";
-  const isOpen = expandedDirs.has(file.path);
-  const isSelected = selectedPath === file.path;
+  const isDir = file.type === "FOLDER";
+  const isOpen = expandedDirs.has(file.id);
+  const isSelected = selectedNodeId === file.id;
+  const children = allFiles.filter((f) => f.parentId === file.id);
 
-  const children = allFiles.filter((f) => {
-    const parent = f.path.includes("/")
-      ? f.path.substring(0, f.path.lastIndexOf("/"))
-      : "";
-    return parent === file.path;
-  });
-
-  const handleClick = () => {
+  const handleClick = async () => {
     if (isDir) {
-      onToggleDir(file.path);
-      onSelect(file as unknown as File);
-    } else {
-      onSelect(file as unknown as File);
+      if (!isOpen) {
+        await onExpand(file.id);
+      }
+      onToggleDir(file.id);
     }
+    onSelect(file as unknown as File);
   };
 
   return (
@@ -121,12 +118,13 @@ export function FileNode({
             {isDir && (
               <>
                 <button
-                  onClick={(e) => {
+                  onClick={async (e) => {
                     e.stopPropagation();
-                    if (!expandedDirs.has(file.path)) {
-                      onToggleDir(file.path);
+                    if (!expandedDirs.has(file.id)) {
+                      await onExpand(file.id);
+                      onToggleDir(file.id);
                     }
-                    setCreating({ type: "file", parentPath: file.path });
+                    setCreating({ type: "file", parentId: file.id });
                     setInputVal("");
                   }}
                   aria-label="New File"
@@ -136,12 +134,13 @@ export function FileNode({
                   <FilePlus className="w-3.5 h-3.5" aria-hidden="true" />
                 </button>
                 <button
-                  onClick={(e) => {
+                  onClick={async (e) => {
                     e.stopPropagation();
-                    if (!expandedDirs.has(file.path)) {
-                      onToggleDir(file.path);
+                    if (!expandedDirs.has(file.id)) {
+                      await onExpand(file.id);
+                      onToggleDir(file.id);
                     }
-                    setCreating({ type: "folder", parentPath: file.path });
+                    setCreating({ type: "folder", parentId: file.id });
                     setInputVal("");
                   }}
                   aria-label="New Folder"
@@ -155,7 +154,7 @@ export function FileNode({
             <button
               onClick={(e) => {
                 e.stopPropagation();
-                onDelete(file.path);
+                onDelete(file.id);
               }}
               aria-label={`Delete ${file.name}`}
               title="Delete item"
@@ -167,71 +166,71 @@ export function FileNode({
         )}
       </div>
 
-      {isDir &&
-        isOpen && (
-          <>
-            {creating && creating.parentPath === file.path && (
-              <div className="py-1" style={{ paddingLeft: `${10 + (depth + 1) * 14}px` }}>
-                <div className="flex items-center gap-2 bg-slate-950 border border-indigo-500/50 rounded-lg px-2.5 py-1.5">
-                  <span className="shrink-0 text-slate-400">
-                    {creating.type === "folder" ? (
-                      <Folder className="w-3.5 h-3.5" />
-                    ) : (
-                      <FileIcon className="w-3.5 h-3.5" />
-                    )}
-                  </span>
-                  <input
-                    autoFocus
-                    value={inputVal}
-                    onChange={(e) => setInputVal(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") {
-                        if (inputVal.trim()) {
-                          onCreate(creating.type, inputVal.trim(), creating.parentPath);
-                        }
-                        setCreating(null);
-                        setInputVal("");
-                      }
-                      if (e.key === "Escape") {
-                        setCreating(null);
-                        setInputVal("");
-                      }
-                    }}
-                    onBlur={() => {
+      {isDir && isOpen && (
+        <>
+          {creating && creating.parentId === file.id && (
+            <div className="py-1" style={{ paddingLeft: `${10 + (depth + 1) * 14}px` }}>
+              <div className="flex items-center gap-2 bg-slate-950 border border-indigo-500/50 rounded-lg px-2.5 py-1.5">
+                <span className="shrink-0 text-slate-400">
+                  {creating.type === "folder" ? (
+                    <Folder className="w-3.5 h-3.5" />
+                  ) : (
+                    <FileIcon className="w-3.5 h-3.5" />
+                  )}
+                </span>
+                <input
+                  autoFocus
+                  value={inputVal}
+                  onChange={(e) => setInputVal(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
                       if (inputVal.trim()) {
-                        onCreate(creating.type, inputVal.trim(), creating.parentPath);
+                        onCreate(creating.type, inputVal.trim(), creating.parentId);
                       }
                       setCreating(null);
                       setInputVal("");
-                    }}
-                    spellCheck={false}
-                    autoComplete="off"
-                    placeholder={creating.type === "folder" ? "folder name…" : "file name…"}
-                    className="flex-1 bg-transparent border-none outline-none text-slate-200 text-xs min-w-0 font-mono"
-                  />
-                </div>
+                    }
+                    if (e.key === "Escape") {
+                      setCreating(null);
+                      setInputVal("");
+                    }
+                  }}
+                  onBlur={() => {
+                    if (inputVal.trim()) {
+                      onCreate(creating.type, inputVal.trim(), creating.parentId);
+                    }
+                    setCreating(null);
+                    setInputVal("");
+                  }}
+                  spellCheck={false}
+                  autoComplete="off"
+                  placeholder={creating.type === "folder" ? "folder name…" : "file name…"}
+                  className="flex-1 bg-transparent border-none outline-none text-slate-200 text-xs min-w-0 font-mono"
+                />
               </div>
-            )}
-            {children.map((child) => (
-              <FileNode
-                key={child.path}
-                file={child}
-                depth={depth + 1}
-                allFiles={allFiles}
-                selectedPath={selectedPath}
-                onSelect={onSelect}
-                onDelete={onDelete}
-                expandedDirs={expandedDirs}
-                onToggleDir={onToggleDir}
-                creating={creating}
-                setCreating={setCreating}
-                inputVal={inputVal}
-                setInputVal={setInputVal}
-                onCreate={onCreate}
-              />
-            ))}
-          </>
-        )}
+            </div>
+          )}
+          {children.map((child) => (
+            <FileNode
+              key={child.id}
+              file={child}
+              depth={depth + 1}
+              allFiles={allFiles}
+              selectedNodeId={selectedNodeId}
+              onSelect={onSelect}
+              onExpand={onExpand}
+              onDelete={onDelete}
+              expandedDirs={expandedDirs}
+              onToggleDir={onToggleDir}
+              creating={creating}
+              setCreating={setCreating}
+              inputVal={inputVal}
+              setInputVal={setInputVal}
+              onCreate={onCreate}
+            />
+          ))}
+        </>
+      )}
     </>
   );
 }

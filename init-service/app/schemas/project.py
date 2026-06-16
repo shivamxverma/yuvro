@@ -1,9 +1,64 @@
+from datetime import datetime
+
 from pydantic import BaseModel, Field
 
-class ProjectCreate(BaseModel):
-    replId: str = Field(..., description="The unique ID of the Repl project.")
-    language: str = Field(..., description="The programming language/template of the project (e.g., 'python', 'nodejs').")
 
-class GitCloneCreate(BaseModel):
-    replId: str = Field(..., description="The unique ID to assign to this cloned project.")
-    githubUrl: str = Field(..., description="The public GitHub repository URL to clone (e.g. https://github.com/user/repo).")
+class WorkspaceBootstrapTemplatePayload(BaseModel):
+    workspaceName: str = Field(..., min_length=1, max_length=120)
+    projectName: str = Field(..., min_length=1, max_length=120)
+    type: str = Field(..., min_length=1, max_length=40)
+
+
+class WorkspaceBootstrapClonePayload(BaseModel):
+    workspaceName: str = Field(..., min_length=1, max_length=120)
+    projectName: str = Field(..., min_length=1, max_length=120)
+    githubUrl: str = Field(..., min_length=1, max_length=2048)
+
+
+class WorkspaceSummary(BaseModel):
+    id: str
+    ownerUserId: str
+    name: str
+    slug: str
+    createdAt: datetime
+    updatedAt: datetime
+
+
+class ProjectSummary(BaseModel):
+    id: str
+    workspaceId: str
+    name: str
+    slug: str
+    type: str
+    createdAt: datetime
+    updatedAt: datetime
+
+
+class NodeSummary(BaseModel):
+    id: str
+    projectId: str
+    parentId: str | None
+    name: str
+    type: str
+    path: str
+    contentHash: str | None = None
+    sizeBytes: int | None = None
+    createdAt: datetime
+    updatedAt: datetime
+    isRoot: bool = False
+
+
+class ProjectBootstrapResponse(BaseModel):
+    workspace: WorkspaceSummary
+    project: ProjectSummary
+    rootNode: NodeSummary
+
+
+class ProjectDetailResponse(BaseModel):
+    workspace: WorkspaceSummary
+    project: ProjectSummary
+    rootNode: NodeSummary
+
+
+class ProjectNodesResponse(BaseModel):
+    nodes: list[NodeSummary]

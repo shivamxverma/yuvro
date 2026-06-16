@@ -10,14 +10,14 @@ import { INIT_SERVICE_URL } from "../lib/api";
 export type AuthUser = {
   id: string;
   email: string;
-  displayName?: string | null;
+  name?: string | null;
 };
 
 type AuthContextValue = {
   user: AuthUser | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<void>;
-  signUp: (email: string, password: string, displayName?: string) => Promise<void>;
+  signUp: (email: string, password: string, name?: string) => Promise<void>;
   signOut: () => Promise<void>;
   refreshUser: () => Promise<void>;
 };
@@ -71,12 +71,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(payload.user);
   };
 
-  const signUp = async (email: string, password: string, displayName?: string) => {
+  const signUp = async (email: string, password: string, name?: string) => {
     const response = await fetch(`${INIT_SERVICE_URL}/auth/signup`, {
       method: "POST",
       credentials: "include",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password, displayName }),
+      body: JSON.stringify({ email, password, name }),
     });
     const payload = await parseJson<{ user: AuthUser }>(response);
     setUser(payload.user);

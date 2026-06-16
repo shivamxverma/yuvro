@@ -8,9 +8,10 @@ class Settings(BaseSettings):
     port: int = 3001
     client_origin: str = "http://localhost:5173"
     database_url: str = "postgresql+psycopg2://postgres:postgres@localhost:5432/yuvro"
-    auth_cookie_name: str = "yuvro_session"
+    auth_cookie_name: str = "yuvro_auth"
     auth_cookie_secure: bool = False
-    auth_session_ttl_days: int = 30
+    auth_token_ttl_days: int = 30
+    auth_secret_key: str = "dev-only-change-me"
 
     model_config = SettingsConfigDict(
         env_file=".env",

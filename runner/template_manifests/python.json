@@ -1,0 +1,13 @@
+{
+  "directories": [],
+  "files": [
+    {
+      "contentHash": "0f8ba99bbc877d6b705c5b8422b2ff8fe75d41157fb3c5e1427d0aad05a9dbd1",
+      "path": "main.py",
+      "sizeBytes": 44
+    }
+  ],
+  "generatedAt": "2026-06-16T04:02:37.769743+00:00",
+  "templateType": "python",
+  "version": 1
+}

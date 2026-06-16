@@ -7,7 +7,7 @@ type Mode = "signin" | "signup";
 export function AuthPage() {
   const { signIn, signUp } = useAuth();
   const [mode, setMode] = useState<Mode>("signin");
-  const [displayName, setDisplayName] = useState("");
+  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -21,7 +21,7 @@ export function AuthPage() {
     setLoading(true);
     try {
       if (isSignup) {
-        await signUp(email.trim(), password, displayName.trim() || undefined);
+        await signUp(email.trim(), password, name.trim() || undefined);
       } else {
         await signIn(email.trim(), password);
       }
@@ -110,8 +110,8 @@ export function AuthPage() {
                     <div className="flex items-center gap-3 rounded-2xl border border-slate-800 bg-slate-900/80 px-4 py-3">
                       <UserRound className="h-4 w-4 text-slate-500" />
                       <input
-                        value={displayName}
-                        onChange={(e) => setDisplayName(e.target.value)}
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
                         placeholder="Ada Lovelace"
                         className="w-full bg-transparent text-sm text-white outline-none placeholder:text-slate-600"
                       />

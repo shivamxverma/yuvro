@@ -1,0 +1,18 @@
+{
+  "directories": [],
+  "files": [
+    {
+      "contentHash": "1d5a572df3c99166124d54611b412117707ef8a97c2be35dd98faead7c955b5e",
+      "path": "manage.py",
+      "sizeBytes": 688
+    },
+    {
+      "contentHash": "57f8288a383db5f3b6d28c7fee8b3a09c9cfbe605abdbc6ee3a2e926234bc230",
+      "path": "requirements.txt",
+      "sizeBytes": 7
+    }
+  ],
+  "generatedAt": "2026-06-16T04:02:37.768327+00:00",
+  "templateType": "django",
+  "version": 1
+}

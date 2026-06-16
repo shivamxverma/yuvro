@@ -1,66 +1,49 @@
-from fastapi import APIRouter, HTTPException, status
-from app.schemas.project import ProjectCreate, GitCloneCreate
-from app.controllers import project_controller
+from fastapi import APIRouter, Depends
+
 from app.routes.auth import require_current_user
-from fastapi import Depends
+from app.schemas.project import (
+    ProjectBootstrapResponse,
+    ProjectDetailResponse,
+    ProjectNodesResponse,
+    WorkspaceBootstrapClonePayload,
+    WorkspaceBootstrapTemplatePayload,
+)
+from app.services import workspace_service
 
-router = APIRouter()
+router = APIRouter(tags=["projects"])
 
-@router.post("/project", status_code=status.HTTP_200_OK)
-def create_project_route(payload: ProjectCreate, user: dict = Depends(require_current_user)):
-    """
-    Endpoint to initialize a new project by copying templates inside S3.
-    """
-    repl_id = payload.replId
-    language = payload.language
 
-    if not repl_id.strip():
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="replId cannot be empty"
-        )
+@router.post("/workspaces/bootstrap/template", response_model=ProjectBootstrapResponse)
+def create_template_project_route(
+    payload: WorkspaceBootstrapTemplatePayload,
+    user: dict = Depends(require_current_user),
+):
+    return workspace_service.create_template_project(
+        owner_user_id=user["id"],
+        workspace_name=payload.workspaceName,
+        project_name=payload.projectName,
+        project_type=payload.type,
+    )
 
-    try:
-        return project_controller.create_project(user["id"], repl_id, language)
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to create project: {str(e)}"
-        )
 
-@router.post("/clone", status_code=status.HTTP_200_OK)
-def clone_project_route(payload: GitCloneCreate, user: dict = Depends(require_current_user)):
-    """
-    Clone a public GitHub repository and store it in S3 as a new project.
-    """
-    repl_id = payload.replId.strip()
-    github_url = payload.githubUrl.strip()
+@router.post("/workspaces/bootstrap/clone", response_model=ProjectBootstrapResponse)
+def clone_project_route(
+    payload: WorkspaceBootstrapClonePayload,
+    user: dict = Depends(require_current_user),
+):
+    return workspace_service.clone_project(
+        owner_user_id=user["id"],
+        workspace_name=payload.workspaceName,
+        project_name=payload.projectName,
+        github_url=payload.githubUrl,
+    )
 
-    if not repl_id:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="replId cannot be empty"
-        )
-    if not github_url:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="githubUrl cannot be empty"
-        )
-    if not (github_url.startswith("https://github.com/") or github_url.startswith("http://github.com/") or github_url.startswith("git@github.com:")):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Only GitHub URLs are supported (https://github.com/...)"
-        )
 
-    try:
-        return project_controller.clone_project(user["id"], repl_id, github_url)
-    except RuntimeError as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
-        )
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to clone project: {str(e)}"
-        )
+@router.get("/projects/{project_id}", response_model=ProjectDetailResponse)
+def get_project_route(project_id: str, user: dict = Depends(require_current_user)):
+    return workspace_service.get_project_detail(user["id"], project_id)
+
+
+@router.get("/projects/{project_id}/nodes", response_model=ProjectNodesResponse)
+def get_project_nodes_route(project_id: str, user: dict = Depends(require_current_user)):
+    return workspace_service.get_project_nodes(user["id"], project_id)

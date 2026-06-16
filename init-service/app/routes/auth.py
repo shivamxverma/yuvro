@@ -12,7 +12,7 @@ def require_current_user(request: Request) -> dict:
 
 @router.post("/signup", response_model=AuthResponse, status_code=status.HTTP_201_CREATED)
 def sign_up(payload: SignUpPayload, response: Response):
-    user = auth_service.create_user(payload.email, payload.password, payload.displayName)
+    user = auth_service.create_user(payload.email, payload.password, payload.name)
     auth_service.create_session(response, user["id"])
     return {"user": user}
 

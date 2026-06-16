@@ -5,11 +5,11 @@ from app.controllers import workspace_controller
 router = APIRouter()
 
 class StartPayload(BaseModel):
-    replId: str
+    projectId: str
 
 @router.post("/start")
 async def start_pod_route(payload: StartPayload):
-    return await workspace_controller.start_pod(payload.replId)
+    return await workspace_controller.start_pod(payload.projectId)
 
 @router.get("/port/{repl_id}")
 async def get_port_route(repl_id: str, container_port: int = 8000):

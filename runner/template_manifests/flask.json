@@ -1,0 +1,18 @@
+{
+  "directories": [],
+  "files": [
+    {
+      "contentHash": "c7c93684a267ed15700b059de70fd7e83f040c3ed98fa0bcfa0e1d269ba77927",
+      "path": "app.py",
+      "sizeBytes": 193
+    },
+    {
+      "contentHash": "76f8bae45e807865955344c1a58882d38c8ceb4f855f58091642b7d48290af97",
+      "path": "requirements.txt",
+      "sizeBytes": 6
+    }
+  ],
+  "generatedAt": "2026-06-16T04:02:37.769375+00:00",
+  "templateType": "flask",
+  "version": 1
+}

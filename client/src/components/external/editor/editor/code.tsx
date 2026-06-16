@@ -1,15 +1,14 @@
 import Editor from "@monaco-editor/react";
 import { useRef, useEffect } from "react";
 import { type File } from "../utils/file-manager";
-import { type Socket } from "socket.io-client";
 
 interface CodeProps {
     selectedFile: File | undefined;
-    socket: Socket;
+    onSave: (fileId: string, value: string) => Promise<void>;
     onSaveStatus?: (status: 'saving' | 'saved' | 'idle') => void;
 }
 
-export const Code = ({ selectedFile, socket, onSaveStatus }: CodeProps) => {
+export const Code = ({ selectedFile, onSave, onSaveStatus }: CodeProps) => {
     if (!selectedFile) return null;
 
     const code = selectedFile.content;
@@ -19,7 +18,7 @@ export const Code = ({ selectedFile, socket, onSaveStatus }: CodeProps) => {
 
     const latestContentRef = useRef<string>(code ?? "");
     const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-    const filePath = selectedFile.path;
+    const fileId = selectedFile.id;
 
     useEffect(() => {
         latestContentRef.current = code ?? "";
@@ -31,14 +30,10 @@ export const Code = ({ selectedFile, socket, onSaveStatus }: CodeProps) => {
             debounceTimerRef.current = null;
         }
         onSaveStatus?.('saving');
-        socket.emit(
-            "updateContent",
-            { path: filePath, content: value },
-            (_ack: { ok?: boolean }) => {
-                onSaveStatus?.('saved');
-                setTimeout(() => onSaveStatus?.('idle'), 2000);
-            }
-        );
+        void onSave(fileId, value).then(() => {
+            onSaveStatus?.('saved');
+            setTimeout(() => onSaveStatus?.('idle'), 2000);
+        });
     };
 
     const debouncedSave = (value: string) => {

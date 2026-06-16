@@ -75,9 +75,11 @@ export const LandingPage = () => {
     const { user, signOut } = useAuth();
     const [tab, setTab] = useState<'create' | 'clone'>('create');
     const [language, setLanguage] = useState("python");
-    const [replId, setReplId] = useState(getRandomSlug());
+    const [workspaceName, setWorkspaceName] = useState("My Workspace");
+    const [projectName, setProjectName] = useState(getRandomSlug());
     const [githubUrl, setGithubUrl] = useState('');
-    const [cloneReplId, setCloneReplId] = useState(getRandomSlug());
+    const [cloneWorkspaceName, setCloneWorkspaceName] = useState("Imported Workspace");
+    const [cloneProjectName, setCloneProjectName] = useState(getRandomSlug());
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const [rollAnimation, setRollAnimation] = useState(false);
@@ -89,32 +91,37 @@ export const LandingPage = () => {
         setTimeout(() => setRollAnimation(false), 600);
         
         if (target === 'create') {
-            setReplId(getRandomSlug());
+            setProjectName(getRandomSlug());
         } else {
-            setCloneReplId(getRandomSlug());
+            setCloneProjectName(getRandomSlug());
         }
     };
 
     const handleCreateProject = async (e: React.FormEvent) => {
         e.preventDefault();
         setError('');
-        if (!replId.trim()) { 
-            setError("Project ID cannot be empty."); 
+        if (!workspaceName.trim() || !projectName.trim()) {
+            setError("Workspace and project names are required.");
             return; 
         }
         setLoading(true);
         try {
-            const response = await fetch(`${INIT_SERVICE_URL}/project`, {
+            const response = await fetch(`${INIT_SERVICE_URL}/workspaces/bootstrap/template`, {
                 method: "POST",
                 credentials: "include",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ replId: replId.trim(), language }),
+                body: JSON.stringify({
+                    workspaceName: workspaceName.trim(),
+                    projectName: projectName.trim(),
+                    type: language,
+                }),
             });
             if (!response.ok) {
                 const errData = await response.json();
                 throw new Error(errData.detail || "Failed to create project.");
             }
-            navigate(`/coding/?replId=${replId.trim()}`);
+            const payload = await response.json();
+            navigate(`/coding/?workspaceId=${payload.workspace.id}&projectId=${payload.project.id}`);
         } catch (err: any) {
             setError(err.message || "Something went wrong.");
         } finally {
@@ -129,8 +136,8 @@ export const LandingPage = () => {
             setError("GitHub URL cannot be empty."); 
             return; 
         }
-        if (!cloneReplId.trim()) { 
-            setError("Project ID cannot be empty."); 
+        if (!cloneWorkspaceName.trim() || !cloneProjectName.trim()) {
+            setError("Workspace and project names are required.");
             return; 
         }
         const url = githubUrl.trim();
@@ -140,17 +147,22 @@ export const LandingPage = () => {
         }
         setLoading(true);
         try {
-            const response = await fetch(`${INIT_SERVICE_URL}/clone`, {
+            const response = await fetch(`${INIT_SERVICE_URL}/workspaces/bootstrap/clone`, {
                 method: "POST",
                 credentials: "include",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ replId: cloneReplId.trim(), githubUrl: url }),
+                body: JSON.stringify({
+                    workspaceName: cloneWorkspaceName.trim(),
+                    projectName: cloneProjectName.trim(),
+                    githubUrl: url,
+                }),
             });
             if (!response.ok) {
                 const errData = await response.json();
                 throw new Error(errData.detail || "Failed to clone project.");
             }
-            navigate(`/coding/?replId=${cloneReplId.trim()}`);
+            const payload = await response.json();
+            navigate(`/coding/?workspaceId=${payload.workspace.id}&projectId=${payload.project.id}`);
         } catch (err: any) {
             setError(err.message || "Something went wrong.");
         } finally {
@@ -184,7 +196,7 @@ export const LandingPage = () => {
                         Instantly prototype and execute python applications in isolated cloud containers.
                     </p>
                     <div className="mt-4 flex items-center gap-3 rounded-full border border-slate-800 bg-slate-950/70 px-4 py-2 text-xs text-slate-300">
-                        <span className="truncate max-w-[220px]">{user?.displayName || user?.email}</span>
+                        <span className="truncate max-w-[220px]">{user?.name || user?.email}</span>
                         <button
                             type="button"
                             onClick={() => { void signOut(); }}
@@ -255,21 +267,41 @@ export const LandingPage = () => {
                         className={tab === 'create' ? 'block' : 'hidden'}
                     >
                         <form onSubmit={handleCreateProject} className="space-y-5">
-                            {/* Project ID Field */}
+                            {/* Workspace Name */}
                             <div>
                                 <label 
-                                    htmlFor="create-repl-id"
+                                    htmlFor="create-workspace-name"
                                     className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2"
                                 >
-                                    Workspace ID
+                                    Workspace Name
+                                </label>
+                                <input
+                                    id="create-workspace-name"
+                                    type="text"
+                                    value={workspaceName}
+                                    onChange={e => setWorkspaceName(e.target.value)}
+                                    placeholder="My Workspace"
+                                    disabled={loading}
+                                    required
+                                    className="w-full px-3.5 py-2.5 bg-slate-950/80 border border-slate-800 focus:border-indigo-500/80 focus:ring-2 focus:ring-indigo-500/10 focus:ring-offset-0 outline-none rounded-lg text-slate-200 text-xs transition duration-200"
+                                />
+                            </div>
+
+                            {/* Project Name Field */}
+                            <div>
+                                <label 
+                                    htmlFor="create-project-name"
+                                    className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2"
+                                >
+                                    Project Name
                                 </label>
                                 <div className="relative flex items-center">
                                     <input
-                                        id="create-repl-id"
+                                        id="create-project-name"
                                         type="text"
-                                        value={replId}
-                                        onChange={e => setReplId(e.target.value)}
-                                        placeholder="Enter workspace name…"
+                                        value={projectName}
+                                        onChange={e => setProjectName(e.target.value)}
+                                        placeholder="python-api"
                                         disabled={loading}
                                         autoComplete="off"
                                         spellCheck={false}
@@ -280,8 +312,8 @@ export const LandingPage = () => {
                                         type="button"
                                         onClick={() => triggerShuffle('create')}
                                         disabled={loading}
-                                        aria-label="Generate random project ID"
-                                        title="Generate random ID"
+                                        aria-label="Generate random project name"
+                                        title="Generate random project name"
                                         className="absolute right-2.5 px-2.5 py-1 bg-indigo-500/10 hover:bg-indigo-500/20 border border-indigo-500/15 text-indigo-300 rounded-md text-[10px] font-bold tracking-wide flex items-center gap-1 cursor-pointer transition duration-150 focus-visible:ring-2 focus-visible:ring-indigo-500 outline-none"
                                     >
                                         <Shuffle className={`w-3 h-3 ${rollAnimation ? 'animate-dice' : ''}`} aria-hidden="true" />
@@ -289,7 +321,7 @@ export const LandingPage = () => {
                                     </button>
                                 </div>
                                 <p className="text-[10px] text-slate-500 mt-1.5">
-                                    A url-friendly identifier for hosting your container
+                                    Workspace and project slugs are derived automatically on the backend.
                                 </p>
                             </div>
 
@@ -398,21 +430,41 @@ export const LandingPage = () => {
                                 </p>
                             </div>
 
-                            {/* Cloned Workspace ID */}
+                            {/* Cloned Workspace Name */}
                             <div>
                                 <label 
-                                    htmlFor="clone-repl-id"
+                                    htmlFor="clone-workspace-name"
                                     className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2"
                                 >
-                                    New Workspace ID
+                                    Workspace Name
+                                </label>
+                                <input
+                                    id="clone-workspace-name"
+                                    type="text"
+                                    value={cloneWorkspaceName}
+                                    onChange={e => setCloneWorkspaceName(e.target.value)}
+                                    placeholder="Imported Workspace"
+                                    disabled={loading}
+                                    required
+                                    className="w-full px-3.5 py-2.5 bg-slate-950/80 border border-slate-800 focus:border-indigo-500/80 focus:ring-2 focus:ring-indigo-500/10 focus:ring-offset-0 outline-none rounded-lg text-slate-200 text-xs transition duration-200"
+                                />
+                            </div>
+
+                            {/* Cloned Project Name */}
+                            <div>
+                                <label 
+                                    htmlFor="clone-project-name"
+                                    className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2"
+                                >
+                                    Project Name
                                 </label>
                                 <div className="relative flex items-center">
                                     <input
-                                        id="clone-repl-id"
+                                        id="clone-project-name"
                                         type="text"
-                                        value={cloneReplId}
-                                        onChange={e => setCloneReplId(e.target.value)}
-                                        placeholder="Enter workspace name…"
+                                        value={cloneProjectName}
+                                        onChange={e => setCloneProjectName(e.target.value)}
+                                        placeholder="github-import"
                                         disabled={loading}
                                         autoComplete="off"
                                         spellCheck={false}
@@ -423,8 +475,8 @@ export const LandingPage = () => {
                                         type="button"
                                         onClick={() => triggerShuffle('clone')}
                                         disabled={loading}
-                                        aria-label="Generate random clone project ID"
-                                        title="Generate random ID"
+                                        aria-label="Generate random clone project name"
+                                        title="Generate random project name"
                                         className="absolute right-2.5 px-2.5 py-1 bg-indigo-500/10 hover:bg-indigo-500/20 border border-indigo-500/15 text-indigo-300 rounded-md text-[10px] font-bold tracking-wide flex items-center gap-1 cursor-pointer transition duration-150 focus-visible:ring-2 focus-visible:ring-indigo-500 outline-none"
                                     >
                                         <Shuffle className={`w-3 h-3 ${rollAnimation ? 'animate-dice' : ''}`} aria-hidden="true" />

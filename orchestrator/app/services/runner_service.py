@@ -15,14 +15,14 @@ async def wait_for_runner(port: int) -> bool:
             await asyncio.sleep(0.5)
     return False
 
-async def trigger_runner_start(port: int, repl_id: str) -> None:
-    """Tell the containerized runner to download files from S3 to /workspace."""
-    print(f"[RunnerService] Triggering S3 workspace download for replId={repl_id} on port {port}")
+async def trigger_runner_start(port: int, project_id: str) -> None:
+    """Tell the runner to initialize the mounted project workspace."""
+    print(f"[RunnerService] Triggering runner workspace init for projectId={project_id} on port {port}")
     async with httpx.AsyncClient() as client:
         try:
             resp = await client.post(
                 f"http://localhost:{port}/start",
-                json={"replId": repl_id},
+                json={"projectId": project_id},
                 timeout=30.0
             )
             if resp.status_code != 200:

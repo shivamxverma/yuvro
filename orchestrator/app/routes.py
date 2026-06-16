@@ -12,20 +12,22 @@ router = APIRouter()
 start_locks = {}
 
 class StartPayload(BaseModel):
-    replId: str
+    workspaceId: str
+    projectId: str
 
 @router.post("/start")
 async def start_container(payload: StartPayload):
-    repl_id = payload.replId.strip()
-    if not repl_id:
-        raise HTTPException(status_code=400, detail="replId cannot be empty")
+    workspace_id = payload.workspaceId.strip()
+    project_id = payload.projectId.strip()
+    if not workspace_id or not project_id:
+        raise HTTPException(status_code=400, detail="workspaceId and projectId are required")
         
-    if repl_id not in start_locks:
-        start_locks[repl_id] = asyncio.Lock()
-    lock = start_locks[repl_id]
+    if project_id not in start_locks:
+        start_locks[project_id] = asyncio.Lock()
+    lock = start_locks[project_id]
     
     async with lock:
-        container_name = f"yuvro-repl-{repl_id}"
+        container_name = f"yuvro-repl-{project_id}"
         
         if docker_service.is_container_running(container_name):
             try:
@@ -42,10 +44,10 @@ async def start_container(payload: StartPayload):
                 
         docker_service.remove_container(container_name)
         
-        host_workspace_dir = os.path.abspath(os.path.join(WORKSPACES_DIR, repl_id))
+        host_workspace_dir = os.path.abspath(os.path.join(WORKSPACES_DIR, workspace_id, project_id))
         os.makedirs(host_workspace_dir, exist_ok=True)
         
-        network_name = f"yuvro-net-{repl_id}"
+        network_name = f"yuvro-net-{project_id}"
         print(f"[Orchestrator] Creating bridge network {network_name}...")
         try:
             docker_service.create_network(network_name)
@@ -74,31 +76,33 @@ async def start_container(payload: StartPayload):
             docker_service.remove_container(container_name)
             raise HTTPException(status_code=500, detail="Timeout: Runner service inside the container did not start in time.")
             
-        await runner_service.trigger_runner_start(port, repl_id)
+        await runner_service.trigger_runner_start(port, project_id)
                 
         return {"status": "started", "port": port}
 
 class DbStartPayload(BaseModel):
-    replId: str
+    projectId: str
+    workspaceId: str
     engine: str
 
 @router.post("/db/start")
 async def start_db_container_route(payload: DbStartPayload):
-    repl_id = payload.replId.strip()
+    project_id = payload.projectId.strip()
+    workspace_id = payload.workspaceId.strip()
     engine = payload.engine.strip().lower()
     
-    if not repl_id:
-        raise HTTPException(status_code=400, detail="replId cannot be empty")
+    if not workspace_id or not project_id:
+        raise HTTPException(status_code=400, detail="workspaceId and projectId are required")
     if engine not in ["postgres", "mysql"]:
         raise HTTPException(status_code=400, detail="engine must be 'postgres' or 'mysql'")
         
-    container_name = f"yuvro-repl-{repl_id}"
+    container_name = f"yuvro-repl-{project_id}"
     if not docker_service.is_container_running(container_name):
         raise HTTPException(status_code=400, detail="Workspace container is not running")
 
-    db_container_name = f"yuvro-db-{repl_id}"
-    network_name = f"yuvro-net-{repl_id}"
-    host_workspace_dir = os.path.abspath(os.path.join(WORKSPACES_DIR, repl_id))
+    db_container_name = f"yuvro-db-{project_id}"
+    network_name = f"yuvro-net-{project_id}"
+    host_workspace_dir = os.path.abspath(os.path.join(WORKSPACES_DIR, workspace_id, project_id))
 
     try:
         print(f"[Orchestrator] Provisioning containerized DB {db_container_name} ({engine})...")
@@ -133,13 +137,13 @@ async def db_garbage_collector_loop():
             
             for name in list(running):
                 if name.startswith("yuvro-db-"):
-                    repl_id = name.replace("yuvro-db-", "")
-                    workspace_container = f"yuvro-repl-{repl_id}"
+                    project_id = name.replace("yuvro-db-", "")
+                    workspace_container = f"yuvro-repl-{project_id}"
                     
                     if workspace_container not in running:
-                        print(f"[GC] Orphan database container found for replId={repl_id}. Pruning...")
+                        print(f"[GC] Orphan database container found for projectId={project_id}. Pruning...")
                         subprocess.run(["docker", "rm", "-f", name], capture_output=True)
-                        subprocess.run(["docker", "network", "rm", f"yuvro-net-{repl_id}"], capture_output=True)
+                        subprocess.run(["docker", "network", "rm", f"yuvro-net-{project_id}"], capture_output=True)
         except Exception as e:
             print(f"[GC Error] {e}")
         await asyncio.sleep(30)

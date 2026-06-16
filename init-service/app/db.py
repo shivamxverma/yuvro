@@ -37,7 +37,7 @@ def session_scope():
 
 
 def init_db() -> None:
-    from app.models.auth import AuthIdentity, AuthSession, User  # noqa: F401
-    from app.models.project import File, Folder, Project, ProjectTemplate, Workspace  # noqa: F401
+    from app.models.auth import AuthMethod, User  # noqa: F401
+    from app.models.project import Node, Project, Workspace  # noqa: F401
 
     Base.metadata.create_all(bind=engine)
