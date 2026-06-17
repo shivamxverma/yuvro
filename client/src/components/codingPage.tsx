@@ -438,6 +438,22 @@ const IDEPage = ({
     return !!selectedExtension && ["cpp", "cc", "cxx"].includes(selectedExtension);
   };
 
+  const getRunShellCommand = (): string => {
+    const command = getRunCommand();
+
+    if (projectType === "cpp") {
+      return command;
+    }
+
+    const selectedRelativePath = selectedFile?.path.replace(/^\//, "");
+    const selectedExtension = selectedRelativePath?.split(".").pop()?.toLowerCase();
+    if (selectedExtension && ["cpp", "cc", "cxx"].includes(selectedExtension)) {
+      return command;
+    }
+
+    return `.venv/bin/python -m ensurepip --upgrade >/dev/null 2>&1; .venv/bin/python -m pip install -r requirements.txt -q 2>/dev/null; ${command}`;
+  };
+
   useEffect(() => {
     return () => {
       if (runTimeoutRef.current) clearTimeout(runTimeoutRef.current);
@@ -483,7 +499,7 @@ const IDEPage = ({
     socket.emit("terminalData", { data: "\x03" });
 
     runTimeoutRef.current = setTimeout(() => {
-      const cmd = `.venv/bin/python -m ensurepip --upgrade >/dev/null 2>&1; .venv/bin/python -m pip install -r requirements.txt -q 2>/dev/null; ${getRunCommand()}`;
+      const cmd = getRunShellCommand();
       socket.emit("terminalData", { data: `${cmd}\n` });
 
       runTimeoutRef.current = setTimeout(() => {
