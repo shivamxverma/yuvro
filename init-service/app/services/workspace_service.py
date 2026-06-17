@@ -9,7 +9,8 @@ import json
 
 from fastapi import HTTPException, status
 from sqlalchemy import select
-from sqlalchemy.orm import Session, joinedload
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import Session, joinedload, selectinload
 
 from app.db import session_scope
 from app.models.project import Node, Project, Workspace
@@ -65,6 +66,14 @@ def _serialize_project(project: Project) -> dict:
     }
 
 
+def _serialize_workspace_with_projects(workspace: Workspace) -> dict:
+    projects = sorted(workspace.projects, key=lambda project: (project.created_at, project.name.lower()))
+    return {
+        **_serialize_workspace(workspace),
+        "projects": [_serialize_project(project) for project in projects],
+    }
+
+
 def _node_path(session: Session, node: Node) -> str:
     if node.parent_id is None:
         return "/"
@@ -103,6 +112,17 @@ def _validate_name(name: str) -> str:
     if "/" in normalized or "\\" in normalized:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Name cannot contain path separators.")
     return normalized
+
+
+def _get_workspace_for_owner(session: Session, owner_user_id: str, workspace_id: str) -> Workspace:
+    workspace = session.scalar(
+        select(Workspace)
+        .options(selectinload(Workspace.projects))
+        .where(Workspace.id == workspace_id, Workspace.owner_user_id == owner_user_id)
+    )
+    if workspace is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Workspace not found.")
+    return workspace
 
 
 def _content_hash_for_file(abs_path: str) -> tuple[str | None, int | None]:
@@ -298,6 +318,77 @@ def _clone_repository(github_url: str, target_dir: str) -> None:
         shutil.rmtree(tmp_dir, ignore_errors=True)
 
 
+def _create_workspace(owner_user_id: str, workspace_name: str) -> Workspace:
+    now = _now()
+    normalized_name = _validate_name(workspace_name)
+    return Workspace(
+        id=str(uuid.uuid4()),
+        owner_user_id=owner_user_id,
+        name=normalized_name,
+        slug=slugify(normalized_name),
+        created_at=now,
+        updated_at=now,
+    )
+
+
+def _create_project_record(workspace_id: str, project_name: str, project_type: str) -> Project:
+    now = _now()
+    normalized_name = _validate_name(project_name)
+    return Project(
+        id=str(uuid.uuid4()),
+        workspace_id=workspace_id,
+        name=normalized_name,
+        slug=slugify(normalized_name),
+        type=project_type,
+        created_at=now,
+        updated_at=now,
+    )
+
+
+def _bootstrap_project(
+    *,
+    workspace: Workspace,
+    project_name: str,
+    project_type: str,
+    bootstrap_fn,
+) -> dict:
+    project = _create_project_record(workspace.id, project_name, project_type)
+    workspace_dir = workspace_disk_path(workspace.id)
+    project_dir = project_disk_path(workspace.id, project.id)
+    os.makedirs(workspace_dir, exist_ok=True)
+    os.makedirs(project_dir, exist_ok=True)
+
+    try:
+        bootstrap_fn(project_dir)
+
+        with session_scope() as session:
+            db_workspace = _get_workspace_for_owner(session, workspace.owner_user_id, workspace.id)
+            db_workspace.updated_at = _now()
+            session.add(project)
+            session.flush()
+            root_node = _create_root_node(session, project)
+            manifest = _load_template_manifest(project_type) if project_type != "github" else None
+            if manifest:
+                _index_tree_from_manifest(session, project, root_node, manifest)
+            else:
+                _index_tree(session, project, root_node, project_dir)
+            session.flush()
+            return {
+                "workspace": _serialize_workspace(db_workspace),
+                "project": _serialize_project(project),
+                "rootNode": serialize_node(session, root_node),
+            }
+    except IntegrityError:
+        shutil.rmtree(project_dir, ignore_errors=True)
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"A project named '{project.name}' already exists in this workspace.",
+        ) from None
+    except Exception:
+        shutil.rmtree(project_dir, ignore_errors=True)
+        raise
+
+
 def _bootstrap_workspace_and_project(
     *,
     owner_user_id: str,
@@ -306,48 +397,27 @@ def _bootstrap_workspace_and_project(
     project_type: str,
     bootstrap_fn,
 ) -> dict:
-    workspace_id = str(uuid.uuid4())
-    project_id = str(uuid.uuid4())
-    now = _now()
+    workspace = _create_workspace(owner_user_id, workspace_name)
+    workspace_dir = workspace_disk_path(workspace.id)
+    os.makedirs(workspace_dir, exist_ok=True)
 
-    workspace = Workspace(
-        id=workspace_id,
-        owner_user_id=owner_user_id,
-        name=workspace_name.strip(),
-        slug=slugify(workspace_name),
-        created_at=now,
-        updated_at=now,
-    )
-    project = Project(
-        id=project_id,
-        workspace_id=workspace_id,
-        name=project_name.strip(),
-        slug=slugify(project_name),
-        type=project_type,
-        created_at=now,
-        updated_at=now,
-    )
-
-    project_dir = project_disk_path(workspace_id, project_id)
-    os.makedirs(project_dir, exist_ok=True)
-    bootstrap_fn(project_dir)
-
-    with session_scope() as session:
-        session.add(workspace)
-        session.add(project)
-        session.flush()
-        root_node = _create_root_node(session, project)
-        manifest = _load_template_manifest(project_type) if project_type != "github" else None
-        if manifest:
-            _index_tree_from_manifest(session, project, root_node, manifest)
-        else:
-            _index_tree(session, project, root_node, project_dir)
-        session.flush()
-        return {
-            "workspace": _serialize_workspace(workspace),
-            "project": _serialize_project(project),
-            "rootNode": serialize_node(session, root_node),
-        }
+    try:
+        with session_scope() as session:
+            session.add(workspace)
+            session.flush()
+        return _bootstrap_project(
+            workspace=workspace,
+            project_name=project_name,
+            project_type=project_type,
+            bootstrap_fn=bootstrap_fn,
+        )
+    except Exception:
+        with session_scope() as session:
+            db_workspace = session.get(Workspace, workspace.id)
+            if db_workspace is not None:
+                session.delete(db_workspace)
+        shutil.rmtree(workspace_dir, ignore_errors=True)
+        raise
 
 
 def create_template_project(owner_user_id: str, workspace_name: str, project_name: str, project_type: str) -> dict:
@@ -368,6 +438,49 @@ def clone_project(owner_user_id: str, workspace_name: str, project_name: str, gi
         project_type="github",
         bootstrap_fn=lambda project_dir: _clone_repository(github_url, project_dir),
     )
+
+
+def create_template_project_in_workspace(
+    owner_user_id: str,
+    workspace_id: str,
+    project_name: str,
+    project_type: str,
+) -> dict:
+    with session_scope() as session:
+        workspace = _get_workspace_for_owner(session, owner_user_id, workspace_id)
+    return _bootstrap_project(
+        workspace=workspace,
+        project_name=project_name,
+        project_type=project_type,
+        bootstrap_fn=lambda project_dir: _copy_template(project_type, project_dir),
+    )
+
+
+def clone_project_in_workspace(
+    owner_user_id: str,
+    workspace_id: str,
+    project_name: str,
+    github_url: str,
+) -> dict:
+    with session_scope() as session:
+        workspace = _get_workspace_for_owner(session, owner_user_id, workspace_id)
+    return _bootstrap_project(
+        workspace=workspace,
+        project_name=project_name,
+        project_type="github",
+        bootstrap_fn=lambda project_dir: _clone_repository(github_url, project_dir),
+    )
+
+
+def list_workspaces(owner_user_id: str) -> dict:
+    with session_scope() as session:
+        workspaces = session.scalars(
+            select(Workspace)
+            .options(selectinload(Workspace.projects))
+            .where(Workspace.owner_user_id == owner_user_id)
+            .order_by(Workspace.updated_at.desc(), Workspace.created_at.desc())
+        ).all()
+        return {"workspaces": [_serialize_workspace_with_projects(workspace) for workspace in workspaces]}
 
 
 def get_project_detail(owner_user_id: str, project_id: str) -> dict:
