@@ -106,6 +106,7 @@ const IDEPage = ({
   const dirtyFileIdsRef = useRef<Set<string>>(new Set());
   const savingFileIdsRef = useRef<Set<string>>(new Set());
   const runTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const runCompletionTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const captureOutputRef = useRef<((data: { data: string }) => void) | null>(null);
   const runnerStartPromiseRef = useRef<Promise<string | null> | null>(null);
 
@@ -430,9 +431,17 @@ const IDEPage = ({
     return ".venv/bin/python main.py";
   };
 
+  const isOneShotRun = (): boolean => {
+    if (projectType === "cpp") return true;
+    const selectedRelativePath = selectedFile?.path.replace(/^\//, "");
+    const selectedExtension = selectedRelativePath?.split(".").pop()?.toLowerCase();
+    return !!selectedExtension && ["cpp", "cc", "cxx"].includes(selectedExtension);
+  };
+
   useEffect(() => {
     return () => {
       if (runTimeoutRef.current) clearTimeout(runTimeoutRef.current);
+      if (runCompletionTimeoutRef.current) clearTimeout(runCompletionTimeoutRef.current);
       if (socket && captureOutputRef.current) {
         socket.off("terminal", captureOutputRef.current);
       }
@@ -441,6 +450,7 @@ const IDEPage = ({
 
   const executeRun = () => {
     if (!socket || !terminalReady) return;
+    const oneShotRun = isOneShotRun();
 
     setBottomTab("output");
     setRunOutput("⏳ Running…\n");
@@ -452,9 +462,21 @@ const IDEPage = ({
     if (runTimeoutRef.current) {
       clearTimeout(runTimeoutRef.current);
     }
+    if (runCompletionTimeoutRef.current) {
+      clearTimeout(runCompletionTimeoutRef.current);
+    }
 
     const captureOutput = (data: { data: string }) => {
       setRunOutput((prev) => prev + data.data);
+      if (oneShotRun) {
+        if (runCompletionTimeoutRef.current) {
+          clearTimeout(runCompletionTimeoutRef.current);
+        }
+        runCompletionTimeoutRef.current = setTimeout(() => {
+          setIsRunning(false);
+          runCompletionTimeoutRef.current = null;
+        }, 1200);
+      }
     };
     captureOutputRef.current = captureOutput;
     socket.on("terminal", captureOutput);
@@ -468,6 +490,13 @@ const IDEPage = ({
         if (captureOutputRef.current) {
           socket.off("terminal", captureOutputRef.current);
           captureOutputRef.current = null;
+        }
+        if (oneShotRun && runCompletionTimeoutRef.current) {
+          clearTimeout(runCompletionTimeoutRef.current);
+          runCompletionTimeoutRef.current = setTimeout(() => {
+            setIsRunning(false);
+            runCompletionTimeoutRef.current = null;
+          }, 1200);
         }
       }, 10000);
     }, 300);
@@ -499,6 +528,10 @@ const IDEPage = ({
     if (runTimeoutRef.current) {
       clearTimeout(runTimeoutRef.current);
       runTimeoutRef.current = null;
+    }
+    if (runCompletionTimeoutRef.current) {
+      clearTimeout(runCompletionTimeoutRef.current);
+      runCompletionTimeoutRef.current = null;
     }
     if (captureOutputRef.current) {
       socket.off("terminal", captureOutputRef.current);
