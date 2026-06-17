@@ -8,7 +8,7 @@ import { QueryConsoleTab } from "./database/QueryConsoleTab";
 import { AddConnectionModal } from "./database/AddConnectionModal";
 
 interface DatabaseViewerProps {
-  runnerPort: number;
+  runnerBaseUrl: string;
   projectId: string;
   workspaceId: string;
 }
@@ -38,7 +38,7 @@ interface ColumnSchema {
   pk: boolean;
 }
 
-export function DatabaseViewer({ runnerPort, projectId, workspaceId }: DatabaseViewerProps) {
+export function DatabaseViewer({ runnerBaseUrl, projectId, workspaceId }: DatabaseViewerProps) {
   // DB Catalog State
   const [dbList, setDbList] = useState<DbConnection[]>([]);
   const [selectedDb, setSelectedDb] = useState<string>("");
@@ -73,7 +73,7 @@ export function DatabaseViewer({ runnerPort, projectId, workspaceId }: DatabaseV
   // Modal State
   const [isAddingConnection, setIsAddingConnection] = useState(false);
 
-  const host = `http://localhost:${runnerPort}`;
+  const host = runnerBaseUrl;
 
   // 1. Fetch connections catalog
   const fetchDatabases = async () => {
@@ -103,7 +103,7 @@ export function DatabaseViewer({ runnerPort, projectId, workspaceId }: DatabaseV
 
   useEffect(() => {
     fetchDatabases();
-  }, [runnerPort]);
+  }, [runnerBaseUrl]);
 
   // 2. Fetch tables when connection selection changes
   const fetchTables = async (dbId: string) => {
@@ -354,12 +354,12 @@ export function DatabaseViewer({ runnerPort, projectId, workspaceId }: DatabaseV
       </div>
 
       {/* 3. Connection Modal */}
-        <AddConnectionModal
+      <AddConnectionModal
           isOpen={isAddingConnection}
           onClose={() => setIsAddingConnection(false)}
           projectId={projectId}
           workspaceId={workspaceId}
-          runnerPort={runnerPort}
+          runnerBaseUrl={runnerBaseUrl}
         onSaveConnectionSuccess={async (newId) => {
           await fetchDatabases();
           setSelectedDb(newId);

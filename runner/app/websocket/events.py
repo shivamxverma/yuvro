@@ -32,10 +32,8 @@ def init_ws(sio: socketio.AsyncServer):
         async def on_terminal_output(decoded_output: str):
             await sio.emit("terminal", {"data": decoded_output}, to=sid)
 
-        async with sio.session(sid) as session:
-            repl_id = session.get("repl_id", "")
-
-        terminal_manager.create_pty(sid, on_terminal_output, repl_id=repl_id)
+        terminal_manager.create_pty(sid, on_terminal_output)
+        await sio.emit("terminalReady", {"ready": True}, to=sid)
 
     @sio.on("terminalData")
     async def on_terminal_data(sid, data):

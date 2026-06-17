@@ -18,9 +18,11 @@ from app.services.cas_service import hash_file, upload_file_if_missing
 
 INITIAL_INDEX_IGNORE_NAMES = {".git", ".venv", "venv", "__pycache__", "node_modules", ".pytest_cache"}
 BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../.."))
-WORKSPACES_DIR = os.path.join(BASE_DIR, "workspaces")
-TEMPLATES_DIR = os.path.join(BASE_DIR, "runner", "templates")
-TEMPLATE_MANIFESTS_DIR = os.path.join(BASE_DIR, "runner", "template_manifests")
+WORKSPACES_DIR = os.path.abspath(os.getenv("WORKSPACES_DIR", os.path.join(BASE_DIR, "workspaces")))
+TEMPLATES_DIR = os.path.abspath(os.getenv("TEMPLATES_DIR", os.path.join(BASE_DIR, "runner", "templates")))
+TEMPLATE_MANIFESTS_DIR = os.path.abspath(
+    os.getenv("TEMPLATE_MANIFESTS_DIR", os.path.join(BASE_DIR, "runner", "template_manifests"))
+)
 
 
 def _now() -> datetime:

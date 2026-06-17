@@ -4,46 +4,34 @@ import subprocess
 import httpx
 from fastapi import Request, Response
 from app.core.config import BASE_DIR
-from app.services.terminal import container_registry, get_container_host_port
 
 def setup_virtualenv_bg(base_dir: str):
-    """Run in background thread - creates venv and installs deps via Docker if needed."""
+    """Run in background thread - create the workspace venv and install deps inside the pod."""
     venv_dir = os.path.join(base_dir, ".venv")
     requirements_file = os.path.join(base_dir, "requirements.txt")
-    is_container = os.getenv("IS_CONTAINER") == "true"
+
     try:
         if not os.path.exists(venv_dir):
-            if is_container:
-                print(f"[BG] Creating virtual environment in {venv_dir} directly inside container...")
-                subprocess.run([
-                    "python", "-m", "venv", ".venv"
-                ], cwd=base_dir, check=True, timeout=120)
-            else:
-                print(f"[BG] Creating virtual environment in {venv_dir} via Docker...")
-                subprocess.run([
-                    "docker", "run", "--rm",
-                    "-v", f"{base_dir}:/workspace",
-                    "-w", "/workspace",
-                    "python:3.10-slim",
-                    "python", "-m", "venv", ".venv"
-                ], check=True, timeout=120)
+            print(f"[BG] Creating virtual environment in {venv_dir}...")
+            subprocess.run(["python", "-m", "venv", ".venv"], cwd=base_dir, check=True, timeout=120)
             print("[BG] Virtual environment created.")
 
+        print("[BG] Ensuring pip exists in workspace virtual environment...")
+        subprocess.run(
+            [".venv/bin/python", "-m", "ensurepip", "--upgrade"],
+            cwd=base_dir,
+            check=True,
+            timeout=120,
+        )
+
         if os.path.exists(requirements_file):
-            if is_container:
-                print(f"[BG] Installing dependencies from {requirements_file} directly inside container...")
-                subprocess.run([
-                    ".venv/bin/pip", "install", "-r", "requirements.txt", "-q"
-                ], cwd=base_dir, check=True, timeout=180)
-            else:
-                print(f"[BG] Installing dependencies from {requirements_file} via Docker...")
-                subprocess.run([
-                    "docker", "run", "--rm",
-                    "-v", f"{base_dir}:/workspace",
-                    "-w", "/workspace",
-                    "python:3.10-slim",
-                    ".venv/bin/pip", "install", "-r", "requirements.txt", "-q"
-                ], check=True, timeout=180)
+            print(f"[BG] Installing dependencies from {requirements_file}...")
+            subprocess.run(
+                [".venv/bin/python", "-m", "pip", "install", "-r", "requirements.txt", "-q"],
+                cwd=base_dir,
+                check=True,
+                timeout=180,
+            )
             print("[BG] Dependencies installed.")
     except Exception as e:
         print(f"[BG setup_virtualenv Error] Failed: {e}")
@@ -54,32 +42,10 @@ async def start_pod(project_id: str):
     return {"status": "started", "message": f"Workspace initializing for {project_id}"}
 
 async def get_port(repl_id: str, container_port: int):
-    container_name = container_registry.get(repl_id)
-    if not container_name:
-        return {"error": f"No container registered for replId={repl_id}"}
-    host_port = await asyncio.to_thread(get_container_host_port, container_name, container_port)
-    if host_port is None:
-        return {"error": f"Container {container_name} has no port {container_port} mapped yet"}
-    return {"repl_id": repl_id, "container_port": container_port, "host_port": host_port}
+    return {"repl_id": repl_id, "container_port": container_port, "host_port": container_port}
 
 async def proxy(repl_id: str, path: str, request: Request, container_port: int):
-    is_container = os.getenv("IS_CONTAINER") == "true"
-    
-    if is_container:
-        target_url = f"http://127.0.0.1:{container_port}/{path}"
-    else:
-        container_name = container_registry.get(repl_id)
-        if not container_name:
-            return Response(content=f"No container for replId={repl_id}", status_code=503)
-
-        host_port = await asyncio.to_thread(get_container_host_port, container_name, container_port)
-        if host_port is None:
-            return Response(
-                content=f"Container {container_name} port {container_port} not mapped yet — is the server running?",
-                status_code=503
-            )
-
-        target_url = f"http://127.0.0.1:{host_port}/{path}"
+    target_url = f"http://127.0.0.1:{container_port}/{path}"
 
     query = request.url.query
     if query:
@@ -103,9 +69,8 @@ async def proxy(repl_id: str, path: str, request: Request, container_port: int):
                 headers=dict(resp.headers),
             )
         except httpx.ConnectError:
-            port_to_log = container_port if is_container else host_port
             return Response(
-                content=f"Cannot connect to container on port {port_to_log} — is the server started?",
+                content=f"Cannot connect to container on port {container_port} — is the server started?",
                 status_code=503,
                 media_type="text/plain",
             )

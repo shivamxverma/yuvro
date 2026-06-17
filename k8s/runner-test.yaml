@@ -1,0 +1,47 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: runner-test
+  namespace: yuvro
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: runner-test
+  template:
+    metadata:
+      labels:
+        app: runner-test
+    spec:
+      containers:
+        - name: runner
+          image: yuvro-runner:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 3002
+          env:
+            - name: BASE_DIR
+              value: /workspace
+            - name: IS_CONTAINER
+              value: "true"
+            - name: PORT
+              value: "3002"
+          volumeMounts:
+            - name: workspace
+              mountPath: /workspace
+      volumes:
+        - name: workspace
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: runner-test
+  namespace: yuvro
+spec:
+  selector:
+    app: runner-test
+  ports:
+    - name: http
+      port: 3002
+      targetPort: 3002

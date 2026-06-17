@@ -1,11 +1,11 @@
 import { useState, useCallback } from "react";
 import { RefreshCw, ExternalLink } from "lucide-react";
 
-export const Output = ({ runnerPort, projectId }: { runnerPort: number; projectId: string }) => {
+export const Output = ({ runnerBaseUrl, projectId }: { runnerBaseUrl: string; projectId: string }) => {
     const [containerPort, setContainerPort] = useState("8000");
     const [iframeKey, setIframeKey] = useState(0);
 
-    const PROXY_URI = `http://localhost:${runnerPort}/proxy/${projectId}/${containerPort}/`;
+    const PROXY_URI = `${runnerBaseUrl}/proxy/${projectId}/${containerPort}/`;
 
     const handleRefresh = useCallback(() => {
         setIframeKey(k => k + 1);

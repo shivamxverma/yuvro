@@ -1,13 +1,14 @@
 import React, { useState } from "react";
 import axios from "axios";
 import { Server, X, Loader2, Database } from "lucide-react";
+import { ORCHESTRATOR_URL } from "../../../lib/api";
 
 interface AddConnectionModalProps {
   isOpen: boolean;
   onClose: () => void;
   projectId: string;
   workspaceId: string;
-  runnerPort: number;
+  runnerBaseUrl: string;
   onSaveConnectionSuccess: (newConnId: string) => void;
 }
 
@@ -16,7 +17,7 @@ export function AddConnectionModal({
   onClose,
   projectId,
   workspaceId,
-  runnerPort,
+  runnerBaseUrl,
   onSaveConnectionSuccess,
 }: AddConnectionModalProps) {
   const [dbType, setDbType] = useState<"postgres" | "mysql" | "sqlite">("postgres");
@@ -31,7 +32,7 @@ export function AddConnectionModal({
   const [provisioning, setProvisioning] = useState(false);
   const [error, setError] = useState("");
 
-  const host = `http://localhost:${runnerPort}`;
+  const host = runnerBaseUrl;
 
   if (!isOpen) return null;
 
@@ -85,7 +86,7 @@ export function AddConnectionModal({
     setError("");
     try {
       // POST to Orchestrator to start container on network
-      const res = await axios.post("http://localhost:3002/db/start", {
+      const res = await axios.post(`${ORCHESTRATOR_URL}/db/start`, {
         workspaceId,
         projectId,
         engine: dbType,

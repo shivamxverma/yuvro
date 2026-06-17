@@ -16,12 +16,14 @@ export const Editor = ({
   onSelect,
   selectedFile,
   onSave,
+  onDraftChange,
   onSaveStatus,
 }: {
   files: RemoteFile[];
   onSelect: (file: File) => void;
   selectedFile: File | undefined;
   onSave: (fileId: string, value: string) => Promise<void>;
+  onDraftChange?: (fileId: string, value: string) => void;
   onSaveStatus?: (status: "saving" | "saved" | "idle") => void;
 }) => {
   const rootDir = useMemo(() => buildFileTree(files), [files]);
@@ -147,7 +149,12 @@ export const Editor = ({
 
   return (
     <div className="w-full h-full">
-      <CodeEditor onSave={onSave} selectedFile={selectedFile} onSaveStatus={onSaveStatus} />
+      <CodeEditor
+        onSave={onSave}
+        onDraftChange={onDraftChange}
+        selectedFile={selectedFile}
+        onSaveStatus={onSaveStatus}
+      />
     </div>
   );
 };

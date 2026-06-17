@@ -1,9 +1,9 @@
 import asyncio
 import httpx
 
-async def wait_for_runner(port: int) -> bool:
-    """Wait for the runner FastAPI server to start responding on the mapped port."""
-    url = f"http://localhost:{port}/docs"
+async def wait_for_runner(base_url: str) -> bool:
+    """Wait for the runner FastAPI server to start responding."""
+    url = f"{base_url.rstrip('/')}/docs"
     async with httpx.AsyncClient() as client:
         for _ in range(30): 
             try:
@@ -15,13 +15,13 @@ async def wait_for_runner(port: int) -> bool:
             await asyncio.sleep(0.5)
     return False
 
-async def trigger_runner_start(port: int, project_id: str) -> None:
+async def trigger_runner_start(base_url: str, project_id: str) -> None:
     """Tell the runner to initialize the mounted project workspace."""
-    print(f"[RunnerService] Triggering runner workspace init for projectId={project_id} on port {port}")
+    print(f"[RunnerService] Triggering runner workspace init for projectId={project_id} via {base_url}")
     async with httpx.AsyncClient() as client:
         try:
             resp = await client.post(
-                f"http://localhost:{port}/start",
+                f"{base_url.rstrip('/')}/start",
                 json={"projectId": project_id},
                 timeout=30.0
             )

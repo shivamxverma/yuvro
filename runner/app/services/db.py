@@ -1,6 +1,7 @@
 import os
 import sqlite3
 import json
+import re
 from abc import ABC, abstractmethod
 from typing import List, Dict, Any, Tuple
 from app.core.config import BASE_DIR
@@ -64,6 +65,9 @@ def get_all_connections() -> List[Dict[str, Any]]:
 
 # ─── Abstract Database Adapter ───────────────────────────────────────────────
 class BaseDbAdapter(ABC):
+    READONLY_START_KEYWORDS = {"select", "with", "show", "describe", "desc", "pragma", "explain", "values"}
+    DANGEROUS_KEYWORDS = {"insert", "update", "delete", "drop", "create", "alter", "replace", "truncate", "merge"}
+
     @abstractmethod
     def get_tables_with_counts(self) -> List[Dict[str, Any]]:
         pass
@@ -80,13 +84,43 @@ class BaseDbAdapter(ABC):
     def run_custom_query(self, query: str) -> Tuple[List[Dict[str, Any]], List[str]]:
         pass
 
+    def _normalize_query(self, query: str) -> str:
+        normalized = query.strip()
+        while normalized.startswith("--") or normalized.startswith("/*"):
+            if normalized.startswith("--"):
+                newline = normalized.find("\n")
+                normalized = "" if newline == -1 else normalized[newline + 1 :].lstrip()
+                continue
+            if normalized.startswith("/*"):
+                end = normalized.find("*/")
+                if end == -1:
+                    raise ValueError("Unterminated SQL comment.")
+                normalized = normalized[end + 2 :].lstrip()
+        return normalized
+
     def _validate_readonly_query(self, query: str) -> None:
         """Enforce read-only access for custom queries."""
-        query_stripped = query.strip().lower()
-        dangerous = ["insert", "update", "delete", "drop", "create", "alter", "replace", "truncate"]
-        first_word = query_stripped.split()[0] if query_stripped.split() else ""
-        if first_word in dangerous:
-            raise ValueError(f"Write operation '{first_word.upper()}' is not allowed in this read-only viewer.")
+        normalized = self._normalize_query(query)
+        if not normalized:
+            raise ValueError("Query cannot be empty.")
+
+        trimmed = normalized.rstrip()
+        if trimmed.endswith(";"):
+            trimmed = trimmed[:-1].rstrip()
+        if ";" in trimmed:
+            raise ValueError("Only a single read-only statement is allowed.")
+
+        first_word_match = re.match(r"([a-zA-Z]+)", trimmed)
+        first_word = first_word_match.group(1).lower() if first_word_match else ""
+        if first_word not in self.READONLY_START_KEYWORDS:
+            raise ValueError(f"Only read-only queries are allowed. Received '{first_word or 'unknown'}'.")
+
+        dangerous_pattern = r"\b(" + "|".join(sorted(self.DANGEROUS_KEYWORDS)) + r")\b"
+        dangerous_match = re.search(dangerous_pattern, trimmed, flags=re.IGNORECASE)
+        if dangerous_match:
+            raise ValueError(
+                f"Write operation '{dangerous_match.group(1).upper()}' is not allowed in this read-only viewer."
+            )
 
 # ─── SQLite Adapter ──────────────────────────────────────────────────────────
 class SQLiteAdapter(BaseDbAdapter):
@@ -99,7 +133,9 @@ class SQLiteAdapter(BaseDbAdapter):
             raise FileNotFoundError(f"Database file not found: {relative_path}")
 
     def _get_connection(self):
-        return sqlite3.connect(self.abs_path)
+        conn = sqlite3.connect(self.abs_path)
+        conn.execute("PRAGMA query_only = ON")
+        return conn
 
     def get_tables_with_counts(self) -> List[Dict[str, Any]]:
         tables = []
@@ -183,7 +219,7 @@ class PostgresAdapter(BaseDbAdapter):
 
     def _get_connection(self):
         import psycopg2
-        return psycopg2.connect(
+        conn = psycopg2.connect(
             host=self.config.get("host", "localhost"),
             port=int(self.config.get("port", 5432)),
             user=self.config.get("user", "postgres"),
@@ -191,6 +227,8 @@ class PostgresAdapter(BaseDbAdapter):
             dbname=self.config.get("database", "postgres"),
             connect_timeout=5
         )
+        conn.set_session(readonly=True, autocommit=False)
+        return conn
 
     def get_tables_with_counts(self) -> List[Dict[str, Any]]:
         import psycopg2.extras
@@ -294,15 +332,20 @@ class MySQLAdapter(BaseDbAdapter):
 
     def _get_connection(self):
         import pymysql
-        return pymysql.connect(
+        conn = pymysql.connect(
             host=self.config.get("host", "localhost"),
             port=int(self.config.get("port", 3306)),
             user=self.config.get("user", "root"),
             password=self.config.get("password", ""),
             database=self.config.get("database", ""),
             cursorclass=pymysql.cursors.DictCursor,
-            connect_timeout=5
+            connect_timeout=5,
+            autocommit=False,
         )
+        with conn.cursor() as cursor:
+            cursor.execute("SET SESSION TRANSACTION READ ONLY")
+            cursor.execute("START TRANSACTION READ ONLY")
+        return conn
 
     def get_tables_with_counts(self) -> List[Dict[str, Any]]:
         tables = []
