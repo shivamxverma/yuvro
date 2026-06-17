@@ -1,0 +1,13 @@
+{
+  "directories": [],
+  "files": [
+    {
+      "contentHash": "8a01b6311de20e39437d116fa63aca69fb29603473e150c9c0e6f207ff04f771",
+      "path": "main.cpp",
+      "sizeBytes": 120
+    }
+  ],
+  "generatedAt": "2026-06-17T00:00:00+00:00",
+  "templateType": "cpp",
+  "version": 1
+}

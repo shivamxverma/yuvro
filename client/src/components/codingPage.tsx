@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Navigate, useSearchParams } from "react-router-dom";
-import axios from "axios";
+import { Navigate, useNavigate, useSearchParams } from "react-router-dom";
 import { type File, type RemoteFile, Type } from "./external/editor/utils/file-manager";
 import { Editor } from "./editor";
 import { useSocket } from "../hooks/useSocket";
@@ -9,7 +8,7 @@ import { Sidebar } from "./ide/Sidebar";
 import { TopNavbar } from "./ide/TopNavbar";
 import { BottomPanel } from "./ide/BottomPanel";
 import { StatusBar } from "./ide/StatusBar";
-import { BootingScreen, WorkspaceLoadingScreen } from "./ide/LoadingScreens";
+import { WorkspaceLoadingScreen } from "./ide/LoadingScreens";
 import { INIT_SERVICE_URL, ORCHESTRATOR_URL } from "../lib/api";
 import { useAuth } from "../auth/AuthContext";
 
@@ -17,6 +16,12 @@ type ProjectDetail = {
   workspace: { id: string; name: string };
   project: { id: string; name: string; type: string };
   rootNode: { id: string };
+};
+
+type WorkspaceSummary = {
+  id: string;
+  name: string;
+  projects: Array<{ id: string; name: string; type: string }>;
 };
 
 type NodePayload = {
@@ -59,45 +64,28 @@ function collectDescendantIds(nodes: RemoteFile[], rootId: string): Set<string> 
 
 export const CodingPage = () => {
   const { user } = useAuth();
-  const [podCreated, setPodCreated] = useState(false);
-  const [runnerBaseUrl, setRunnerBaseUrl] = useState<string | null>(null);
   const [searchParams] = useSearchParams();
   const workspaceId = searchParams.get("workspaceId") ?? "";
   const projectId = searchParams.get("projectId") ?? "";
 
-  useEffect(() => {
-    if (!user || !workspaceId || !projectId) return;
-    axios
-      .post(`${ORCHESTRATOR_URL}/start`, { workspaceId, projectId })
-      .then((res) => {
-        setRunnerBaseUrl(res.data.baseUrl || `http://localhost:${res.data.port || 3002}`);
-        setPodCreated(true);
-      })
-      .catch((err) => {
-        console.error(err);
-        setRunnerBaseUrl("http://localhost:3002");
-        setPodCreated(true);
-      });
-  }, [workspaceId, projectId, user]);
-
   if (!user) return <Navigate to="/" replace />;
   if (!workspaceId || !projectId) return <Navigate to="/" replace />;
-  if (!podCreated || !runnerBaseUrl) return <BootingScreen />;
 
-  return <IDEPage runnerBaseUrl={runnerBaseUrl} workspaceId={workspaceId} projectId={projectId} />;
+  return <IDEPage workspaceId={workspaceId} projectId={projectId} />;
 };
 
 const IDEPage = ({
-  runnerBaseUrl,
   workspaceId,
   projectId,
 }: {
-  runnerBaseUrl: string;
   workspaceId: string;
   projectId: string;
 }) => {
+  const navigate = useNavigate();
   const [loaded, setLoaded] = useState(false);
   const [fileStructure, setFileStructure] = useState<RemoteFile[]>([]);
+  const [workspaceName, setWorkspaceName] = useState("");
+  const [workspaceProjects, setWorkspaceProjects] = useState<Array<{ id: string; name: string; type: string }>>([]);
   const [projectName, setProjectName] = useState("");
   const [projectType, setProjectType] = useState("");
   const [rootNodeId, setRootNodeId] = useState("");
@@ -107,12 +95,19 @@ const IDEPage = ({
   const [bottomTab, setBottomTab] = useState<"terminal" | "preview" | "output" | "database">("terminal");
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved">("idle");
   const [runOutput, setRunOutput] = useState<string>("");
+  const [runnerBaseUrl, setRunnerBaseUrl] = useState<string | null>(null);
+  const [runnerStarting, setRunnerStarting] = useState(false);
+  const [runnerError, setRunnerError] = useState("");
   const [terminalReady, setTerminalReady] = useState(false);
+  const [pendingRunnerAction, setPendingRunnerAction] = useState<"run" | null>(null);
+  const [isRunning, setIsRunning] = useState(false);
   const loadedDirectoryIdsRef = useRef<Set<string>>(new Set());
-  const autoRunTriggeredRef = useRef(false);
   const draftContentsRef = useRef<Map<string, string>>(new Map());
   const dirtyFileIdsRef = useRef<Set<string>>(new Set());
   const savingFileIdsRef = useRef<Set<string>>(new Set());
+  const runTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const captureOutputRef = useRef<((data: { data: string }) => void) | null>(null);
+  const runnerStartPromiseRef = useRef<Promise<string | null> | null>(null);
 
   const socket = useSocket(projectId, runnerBaseUrl);
   const sidebar = useResize("horizontal", 230, 150, 420);
@@ -124,8 +119,14 @@ const IDEPage = ({
 
   useEffect(() => {
     setTerminalReady(false);
-    autoRunTriggeredRef.current = false;
-  }, [projectId, runnerBaseUrl]);
+    setRunnerBaseUrl(null);
+    setRunnerStarting(false);
+    setRunnerError("");
+    setPendingRunnerAction(null);
+    setIsRunning(false);
+    setRunOutput("");
+    runnerStartPromiseRef.current = null;
+  }, [projectId]);
 
   useEffect(() => {
     if (!socket) return;
@@ -209,6 +210,32 @@ const IDEPage = ({
   }, [projectId]);
 
   useEffect(() => {
+    const fetchWorkspaceState = async () => {
+      const response = await fetch(`${INIT_SERVICE_URL}/workspaces`, {
+        credentials: "include",
+      });
+      if (!response.ok) {
+        throw new Error("Failed to load workspace projects.");
+      }
+
+      const payload = (await response.json()) as { workspaces: WorkspaceSummary[] };
+      const activeWorkspace = payload.workspaces.find((workspace) => workspace.id === workspaceId);
+      if (!activeWorkspace) {
+        throw new Error("Workspace not found.");
+      }
+
+      setWorkspaceName(activeWorkspace.name);
+      setWorkspaceProjects(activeWorkspace.projects);
+    };
+
+    void fetchWorkspaceState().catch((err) => {
+      console.error(err);
+      setWorkspaceName("");
+      setWorkspaceProjects([]);
+    });
+  }, [workspaceId]);
+
+  useEffect(() => {
     if (!selectedNodeId) return;
     const exists = fileStructure.some((node) => node.id === selectedNodeId);
     if (!exists) {
@@ -277,9 +304,7 @@ const IDEPage = ({
       credentials: "include",
     });
     const removedIds = collectDescendantIds(fileStructure, nodeId);
-    setFileStructure((prev) => {
-      return prev.filter((node) => !removedIds.has(node.id));
-    });
+    setFileStructure((prev) => prev.filter((node) => !removedIds.has(node.id)));
     setLoadedDirectoryIds((prev) => {
       const next = new Set(prev);
       for (const removedId of removedIds) {
@@ -324,26 +349,86 @@ const IDEPage = ({
     }
   };
 
+  const ensureRunnerStarted = async (): Promise<string | null> => {
+    if (runnerBaseUrl) return runnerBaseUrl;
+    if (runnerStartPromiseRef.current) return runnerStartPromiseRef.current;
+
+    setRunnerStarting(true);
+    setRunnerError("");
+
+    const startPromise = fetch(`${ORCHESTRATOR_URL}/start`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ workspaceId, projectId }),
+    })
+      .then(async (response) => {
+        if (!response.ok) {
+          const payload = await response.json().catch(() => ({}));
+          throw new Error(payload.detail || "Failed to start runtime.");
+        }
+        const payload = (await response.json()) as { baseUrl?: string };
+        if (!payload.baseUrl) {
+          throw new Error("Runner base URL missing from orchestrator response.");
+        }
+        setRunnerBaseUrl(payload.baseUrl);
+        return payload.baseUrl;
+      })
+      .catch((error: unknown) => {
+        const message = error instanceof Error ? error.message : "Failed to start runtime.";
+        console.error(error);
+        setRunnerError(message);
+        return null;
+      })
+      .finally(() => {
+        setRunnerStarting(false);
+        runnerStartPromiseRef.current = null;
+      });
+
+    runnerStartPromiseRef.current = startPromise;
+    return startPromise;
+  };
+
+  const handleProjectSwitch = async (nextProjectId: string) => {
+    if (nextProjectId === projectId) return;
+    await flushDirtyFiles();
+    navigate(`/coding/?workspaceId=${workspaceId}&projectId=${nextProjectId}`);
+  };
+
   const rootLevelFiles = useMemo(
     () => fileStructure.filter((f) => f.parentId === rootNodeId && f.type === "FILE"),
     [fileStructure, rootNodeId]
   );
 
   const getRunCommand = (): string => {
+    const selectedRelativePath = selectedFile?.path.replace(/^\//, "");
+    const selectedExtension = selectedRelativePath?.split(".").pop()?.toLowerCase();
+    const selectedStem = selectedRelativePath?.replace(/\.[^.]+$/, "") || "program";
+
+    if (projectType === "cpp") {
+      const cppEntry = rootLevelFiles.find((f) => /\.(cpp|cc|cxx)$/i.test(f.name));
+      const entry = cppEntry?.path.replace(/^\//, "") || "main.cpp";
+      const binary = entry.replace(/\.[^.]+$/, "") || "main";
+      return `g++ -std=c++17 -O2 -Wall -Wextra "${entry}" -o "${binary}" && "./${binary}"`;
+    }
     if (projectType === "fastapi") return ".venv/bin/python -m uvicorn main:app --host 0.0.0.0 --port 8000 --reload";
     if (projectType === "django") return ".venv/bin/python manage.py runserver 0.0.0.0:8000";
     if (projectType === "flask") return ".venv/bin/python app.py";
     if (rootLevelFiles.some((f) => f.name === "manage.py")) return ".venv/bin/python manage.py runserver 0.0.0.0:8000";
     if (rootLevelFiles.some((f) => f.name === "app.py")) return ".venv/bin/python app.py";
+    if (selectedRelativePath && selectedExtension && ["cpp", "cc", "cxx"].includes(selectedExtension)) {
+      return `g++ -std=c++17 -O2 -Wall -Wextra "${selectedRelativePath}" -o "${selectedStem}" && "./${selectedStem}"`;
+    }
+    const rootCppFile = rootLevelFiles.find((f) => /\.(cpp|cc|cxx)$/i.test(f.name));
+    if (rootCppFile) {
+      const entry = rootCppFile.path.replace(/^\//, "");
+      const binary = entry.replace(/\.[^.]+$/, "") || "main";
+      return `g++ -std=c++17 -O2 -Wall -Wextra "${entry}" -o "${binary}" && "./${binary}"`;
+    }
     if (selectedFile && selectedFile.type === Type.FILE) {
       return `.venv/bin/python ${selectedFile.path.replace(/^\//, "")}`;
     }
     return ".venv/bin/python main.py";
   };
-
-  const [isRunning, setIsRunning] = useState(false);
-  const runTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const captureOutputRef = useRef<((data: { data: string }) => void) | null>(null);
 
   useEffect(() => {
     return () => {
@@ -354,9 +439,9 @@ const IDEPage = ({
     };
   }, [socket]);
 
-  const handleRun = async () => {
+  const executeRun = () => {
     if (!socket || !terminalReady) return;
-    await flushFileSave(selectedFile?.id);
+
     setBottomTab("output");
     setRunOutput("⏳ Running…\n");
     setIsRunning(true);
@@ -388,6 +473,25 @@ const IDEPage = ({
     }, 300);
   };
 
+  const handleRun = async () => {
+    await flushFileSave(selectedFile?.id);
+    setBottomTab("output");
+
+    const baseUrl = await ensureRunnerStarted();
+    if (!baseUrl) {
+      setRunOutput(`Failed to start runtime.${runnerError ? ` ${runnerError}` : ""}\n`);
+      return;
+    }
+
+    if (!socket || !terminalReady) {
+      setRunOutput("⏳ Starting runtime…\n");
+      setPendingRunnerAction("run");
+      return;
+    }
+
+    executeRun();
+  };
+
   const handleStop = () => {
     if (!socket) return;
     setIsRunning(false);
@@ -414,10 +518,10 @@ const IDEPage = ({
   };
 
   useEffect(() => {
-    if (!loaded || !socket || !terminalReady || autoRunTriggeredRef.current) return;
-    autoRunTriggeredRef.current = true;
-    void handleRun();
-  }, [loaded, socket, terminalReady]);
+    if (pendingRunnerAction !== "run" || !socket || !terminalReady) return;
+    setPendingRunnerAction(null);
+    executeRun();
+  }, [pendingRunnerAction, socket, terminalReady]);
 
   useEffect(() => {
     const interval = window.setInterval(() => {
@@ -469,41 +573,45 @@ const IDEPage = ({
         bottomTab={bottomTab}
         onRun={handleRun}
         isRunning={isRunning}
+        isRunnerStarting={runnerStarting}
         onStop={handleStop}
         onRestart={handleRestart}
         onTogglePreview={() => setBottomTab((t) => (t === "preview" ? "terminal" : "preview"))}
       />
 
       <main className="flex-1 flex overflow-hidden relative">
-        {socket && (
-          <>
-            <div style={{ width: sidebar.size, minWidth: sidebar.size }} className="shrink-0 flex">
-              <Sidebar
-                files={fileStructure}
-                selectedNodeId={selectedNodeId}
-                projectLabel={projectName || projectId}
-                rootNodeId={rootNodeId}
-                onSelect={(file) => {
-                  void onSelect(file);
-                }}
-                onExpand={(nodeId) => fetchChildren(nodeId)}
-                onCreate={(type, name, parentId) => {
-                  void onCreate(type, name, parentId);
-                }}
-                onDelete={(nodeId) => {
-                  void onDelete(nodeId);
-                }}
-              />
-            </div>
-            <div
-              onMouseDown={sidebar.onMouseDown}
-              role="separator"
-              aria-label="Resize sidebar explorer"
-              className="w-1 shrink-0 cursor-col-resize bg-transparent hover:bg-indigo-500 border-r border-slate-900 hover:border-indigo-500 hover:shadow-[0_0_8px_rgba(99,102,241,0.5)] transition-all duration-150"
-              title="Drag to resize sidebar"
+        <>
+          <div style={{ width: sidebar.size, minWidth: sidebar.size }} className="shrink-0 flex">
+            <Sidebar
+              files={fileStructure}
+              selectedNodeId={selectedNodeId}
+              workspaceLabel={workspaceName}
+              workspaceProjects={workspaceProjects}
+              activeProjectId={projectId}
+              rootNodeId={rootNodeId}
+              onSelect={(file) => {
+                void onSelect(file);
+              }}
+              onSwitchProject={(nextProjectId) => {
+                void handleProjectSwitch(nextProjectId);
+              }}
+              onExpand={(nodeId) => fetchChildren(nodeId)}
+              onCreate={(type, name, parentId) => {
+                void onCreate(type, name, parentId);
+              }}
+              onDelete={(nodeId) => {
+                void onDelete(nodeId);
+              }}
             />
-          </>
-        )}
+          </div>
+          <div
+            onMouseDown={sidebar.onMouseDown}
+            role="separator"
+            aria-label="Resize sidebar explorer"
+            className="w-1 shrink-0 cursor-col-resize bg-transparent hover:bg-indigo-500 border-r border-slate-900 hover:border-indigo-500 hover:shadow-[0_0_8px_rgba(99,102,241,0.5)] transition-all duration-150"
+            title="Drag to resize sidebar"
+          />
+        </>
 
         <div className="flex-1 flex flex-col overflow-hidden min-w-0">
           <div className="flex-1 overflow-hidden relative">
@@ -528,6 +636,8 @@ const IDEPage = ({
             runOutput={runOutput}
             onClearOutput={() => setRunOutput("")}
             runnerBaseUrl={runnerBaseUrl}
+            runnerStarting={runnerStarting}
+            runnerError={runnerError}
             projectId={projectId}
             workspaceId={workspaceId}
           />

@@ -29,6 +29,7 @@ const CodeSession = ({ selectedFile, onSave, onDraftChange, onSaveStatus }: Code
     let language = selectedFile.name.split('.').pop();
 
     if (language === "py") language = "python";
+    if (language === "cc" || language === "cxx" || language === "hpp" || language === "h") language = "cpp";
 
     const [draft, setDraft] = useState(code);
     const latestContentRef = useRef<string>(code);

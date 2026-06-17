@@ -8,6 +8,7 @@ interface TopNavbarProps {
   bottomTab: "terminal" | "preview" | "output" | "database";
   onRun: () => void;
   isRunning: boolean;
+  isRunnerStarting?: boolean;
   onStop: () => void;
   onRestart: () => void;
   onTogglePreview: () => void;
@@ -20,6 +21,7 @@ export function TopNavbar({
   bottomTab,
   onRun,
   isRunning,
+  isRunnerStarting = false,
   onStop,
   onRestart,
   onTogglePreview,
@@ -74,10 +76,20 @@ export function TopNavbar({
         {!isRunning ? (
           <button
             onClick={onRun}
-            className="flex items-center gap-1.5 px-3.5 py-1.5 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 border border-emerald-500/10 text-white text-[11px] font-bold tracking-wide rounded-md shadow-lg shadow-emerald-500/10 cursor-pointer transition duration-150 focus-visible:ring-2 focus-visible:ring-emerald-500 outline-none active:scale-[0.98]"
+            disabled={isRunnerStarting}
+            className="flex items-center gap-1.5 px-3.5 py-1.5 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 disabled:from-emerald-500/70 disabled:to-teal-500/70 border border-emerald-500/10 text-white text-[11px] font-bold tracking-wide rounded-md shadow-lg shadow-emerald-500/10 cursor-pointer disabled:cursor-wait transition duration-150 focus-visible:ring-2 focus-visible:ring-emerald-500 outline-none active:scale-[0.98] disabled:active:scale-100"
           >
-            <Play className="w-3.5 h-3.5 fill-current" aria-hidden="true" />
-            <span>Run</span>
+            {isRunnerStarting ? (
+              <>
+                <Loader2 className="w-3.5 h-3.5 animate-spin" aria-hidden="true" />
+                <span>Starting…</span>
+              </>
+            ) : (
+              <>
+                <Play className="w-3.5 h-3.5 fill-current" aria-hidden="true" />
+                <span>Run</span>
+              </>
+            )}
           </button>
         ) : (
           <div className="flex items-center gap-2">

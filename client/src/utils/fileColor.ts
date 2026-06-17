@@ -3,6 +3,11 @@ export function fileColor(name: string): string {
   const ext = name.split(".").pop()?.toLowerCase();
   const map: Record<string, string> = {
     py: "#38bdf8",   // Light blue
+    cpp: "#60a5fa",
+    cc: "#60a5fa",
+    cxx: "#60a5fa",
+    h: "#a5b4fc",
+    hpp: "#a5b4fc",
     ts: "#60a5fa",   // Blue
     tsx: "#60a5fa",
     js: "#fbbf24",   // Amber

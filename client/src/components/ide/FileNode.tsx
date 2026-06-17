@@ -50,6 +50,7 @@ export function FileNode({
   const isOpen = expandedDirs.has(file.id);
   const isSelected = selectedNodeId === file.id;
   const children = allFiles.filter((f) => f.parentId === file.id);
+  const rowLeftPad = 18 + depth * 14;
 
   const handleClick = async () => {
     if (isDir) {
@@ -77,15 +78,15 @@ export function FileNode({
             handleClick();
           }
         }}
-        className={`group flex items-center gap-2 px-2.5 py-1.5 cursor-pointer rounded-lg mb-0.5 text-xs select-none transition-all duration-150 focus-visible:ring-2 focus-visible:ring-indigo-500/80 outline-none ${
+        className={`group flex items-center gap-1.5 px-2 py-[3px] cursor-pointer text-[13px] select-none transition-colors duration-100 focus-visible:ring-1 focus-visible:ring-[#0078d4] outline-none ${
           isSelected
-            ? "bg-indigo-950/30 text-indigo-300 border-l-2 border-indigo-500 shadow-sm"
-            : "text-slate-400 hover:text-slate-200 hover:bg-slate-900/40"
+            ? "bg-[#37373d] text-[#ffffff]"
+            : "text-[#cccccc] hover:text-[#ffffff] hover:bg-[#2a2d2e]"
         }`}
-        style={{ paddingLeft: `${10 + depth * 14}px` }}
+        style={{ paddingLeft: `${rowLeftPad}px` }}
       >
         {isDir ? (
-          <span className="text-slate-500/80 group-hover:text-slate-400/90 transition-colors flex-shrink-0">
+          <span className="text-[#c5c5c5] transition-colors flex-shrink-0">
             {isOpen ? (
               <ChevronDown className="w-3.5 h-3.5" aria-hidden="true" />
             ) : (
@@ -98,20 +99,20 @@ export function FileNode({
 
         <span
           className="flex-shrink-0"
-          style={{ color: isDir ? "#f59e0b" : fileColor(file.name) }}
+          style={{ color: isDir ? "#dcb67a" : fileColor(file.name) }}
         >
           {isDir ? (
             isOpen ? (
-              <FolderOpen className="w-3.5 h-3.5" aria-hidden="true" />
+              <FolderOpen className="w-4 h-4" aria-hidden="true" />
             ) : (
-              <Folder className="w-3.5 h-3.5" aria-hidden="true" />
+              <Folder className="w-4 h-4" aria-hidden="true" />
             )
           ) : (
-            <FileIcon className="w-3.5 h-3.5" aria-hidden="true" />
+            <FileIcon className="w-4 h-4" aria-hidden="true" />
           )}
         </span>
 
-        <span className="flex-1 truncate font-mono text-[12px]">{file.name}</span>
+        <span className="flex-1 truncate">{file.name}</span>
 
         {hovered && (
           <div className="flex items-center gap-1.5">
@@ -129,7 +130,7 @@ export function FileNode({
                   }}
                   aria-label="New File"
                   title="New File"
-                  className="text-slate-400 hover:text-slate-200 p-0.5 bg-slate-950/20 hover:bg-slate-950/50 rounded flex-shrink-0 transition duration-150 cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
+                  className="text-[#9da1a6] hover:text-[#d4d4d4] p-0.5 hover:bg-[#3a3d41] rounded-sm flex-shrink-0 transition duration-150 cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-[#0078d4]"
                 >
                   <FilePlus className="w-3.5 h-3.5" aria-hidden="true" />
                 </button>
@@ -145,7 +146,7 @@ export function FileNode({
                   }}
                   aria-label="New Folder"
                   title="New Folder"
-                  className="text-slate-400 hover:text-slate-200 p-0.5 bg-slate-950/20 hover:bg-slate-950/50 rounded flex-shrink-0 transition duration-150 cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
+                  className="text-[#9da1a6] hover:text-[#d4d4d4] p-0.5 hover:bg-[#3a3d41] rounded-sm flex-shrink-0 transition duration-150 cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-[#0078d4]"
                 >
                   <FolderPlus className="w-3.5 h-3.5" aria-hidden="true" />
                 </button>
@@ -158,7 +159,7 @@ export function FileNode({
               }}
               aria-label={`Delete ${file.name}`}
               title="Delete item"
-              className="text-red-400/70 hover:text-red-400 p-0.5 bg-slate-950/20 hover:bg-slate-950/50 rounded flex-shrink-0 transition duration-150 cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-red-500"
+              className="text-[#c97777] hover:text-[#f48771] p-0.5 hover:bg-[#3a3d41] rounded-sm flex-shrink-0 transition duration-150 cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-[#f48771]"
             >
               <Trash2 className="w-3.5 h-3.5" aria-hidden="true" />
             </button>
@@ -169,11 +170,11 @@ export function FileNode({
       {isDir && isOpen && (
         <>
           {creating && creating.parentId === file.id && (
-            <div className="py-1" style={{ paddingLeft: `${10 + (depth + 1) * 14}px` }}>
-              <div className="flex items-center gap-2 bg-slate-950 border border-indigo-500/50 rounded-lg px-2.5 py-1.5">
-                <span className="shrink-0 text-slate-400">
+            <div className="py-1" style={{ paddingLeft: `${rowLeftPad + 14}px` }}>
+              <div className="flex items-center gap-2 bg-[#1f1f1f] border border-[#0078d4] rounded-sm px-2 py-1.5">
+                <span className="shrink-0 text-[#9da1a6]">
                   {creating.type === "folder" ? (
-                    <Folder className="w-3.5 h-3.5" />
+                    <Folder className="w-3.5 h-3.5 text-[#dcb67a]" />
                   ) : (
                     <FileIcon className="w-3.5 h-3.5" />
                   )}
@@ -205,7 +206,7 @@ export function FileNode({
                   spellCheck={false}
                   autoComplete="off"
                   placeholder={creating.type === "folder" ? "folder name…" : "file name…"}
-                  className="flex-1 bg-transparent border-none outline-none text-slate-200 text-xs min-w-0 font-mono"
+                  className="flex-1 bg-transparent border-none outline-none text-[#d4d4d4] text-xs min-w-0"
                 />
               </div>
             </div>

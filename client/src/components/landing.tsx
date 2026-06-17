@@ -65,11 +65,23 @@ const FlaskIcon = ({ className }: { className?: string }) => (
   </svg>
 );
 
+const CppIcon = ({ className }: { className?: string }) => (
+  <svg className={className} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <rect width="24" height="24" rx="5.5" fill="#0B1220" />
+    <path d="M12 4.5L6 8v8l6 3.5 6-3.5V8L12 4.5z" fill="#1E88E5" opacity="0.18" />
+    <path d="M12 4.5L6 8v8l6 3.5 6-3.5V8L12 4.5z" stroke="#60A5FA" strokeWidth="1.1" />
+    <path d="M10.4 9.6a2.8 2.8 0 1 0 0 4.8" stroke="#E5F0FF" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+    <path d="M13.55 10.55v3.1M12 12.1h3.1" stroke="#E5F0FF" strokeWidth="1.2" strokeLinecap="round" />
+    <path d="M16.8 10.55v3.1M15.25 12.1h3.1" stroke="#E5F0FF" strokeWidth="1.2" strokeLinecap="round" />
+  </svg>
+);
+
 const LANGUAGES = [
   { value: 'python', label: 'Python', icon: <PythonIcon className="w-full h-full" />, desc: 'Standard Python 3 backend environment' },
   { value: 'fastapi', label: 'FastAPI', icon: <FastApiIcon className="w-full h-full" />, desc: 'High-performance Python web APIs' },
   { value: 'django', label: 'Django', icon: <DjangoIcon className="w-full h-full" />, desc: 'The web framework for perfectionists' },
   { value: 'flask', label: 'Flask', icon: <FlaskIcon className="w-full h-full" />, desc: 'Lightweight WSGI web application framework' },
+  { value: 'cpp', label: 'C++', icon: <CppIcon className="w-full h-full" />, desc: 'Native C++ workspace with g++ compile-and-run' },
 ];
 
 type ProjectSummary = {

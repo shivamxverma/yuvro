@@ -19,7 +19,9 @@ interface BottomPanelProps {
   socket: Socket | null;
   runOutput: string;
   onClearOutput: () => void;
-  runnerBaseUrl: string;
+  runnerBaseUrl: string | null;
+  runnerStarting: boolean;
+  runnerError: string;
   projectId: string;
   workspaceId: string;
 }
@@ -33,9 +35,17 @@ export function BottomPanel({
   runOutput,
   onClearOutput,
   runnerBaseUrl,
+  runnerStarting,
+  runnerError,
   projectId,
   workspaceId,
 }: BottomPanelProps) {
+  const runnerStatusText = runnerStarting
+    ? "Starting runtime..."
+    : runnerError
+      ? `Runtime unavailable: ${runnerError}`
+      : "Runtime has not been started. Click Run to start it.";
+
   return (
     <>
       {/* Vertical resize handle */}
@@ -101,7 +111,11 @@ export function BottomPanel({
             aria-labelledby="tab-terminal"
             className={`absolute inset-0 ${activeTab === "terminal" ? "block" : "hidden"}`}
           >
-            {socket && <Terminal socket={socket} />}
+            {socket ? (
+              <Terminal socket={socket} />
+            ) : (
+              <IdlePanel message={runnerStatusText} />
+            )}
           </div>
 
           {/* Output panel */}
@@ -139,7 +153,11 @@ export function BottomPanel({
             aria-labelledby="tab-preview"
             className={`absolute inset-0 ${activeTab === "preview" ? "block" : "hidden"}`}
           >
-            <Output runnerBaseUrl={runnerBaseUrl} projectId={projectId} />
+            {runnerBaseUrl ? (
+              <Output runnerBaseUrl={runnerBaseUrl} projectId={projectId} />
+            ) : (
+              <IdlePanel message={runnerStatusText} />
+            )}
           </div>
 
           {/* Database Viewer panel */}
@@ -149,11 +167,23 @@ export function BottomPanel({
             aria-labelledby="tab-database"
             className={`absolute inset-0 ${activeTab === "database" ? "block" : "hidden"}`}
           >
-            <DatabaseViewer runnerBaseUrl={runnerBaseUrl} projectId={projectId} workspaceId={workspaceId} />
+            {runnerBaseUrl ? (
+              <DatabaseViewer runnerBaseUrl={runnerBaseUrl} projectId={projectId} workspaceId={workspaceId} />
+            ) : (
+              <IdlePanel message={runnerStatusText} />
+            )}
           </div>
         </div>
       </div>
     </>
+  );
+}
+
+function IdlePanel({ message }: { message: string }) {
+  return (
+    <div className="h-full w-full flex items-center justify-center bg-[#070b13] text-center p-6">
+      <p className="max-w-md text-sm text-slate-500">{message}</p>
+    </div>
   );
 }
 
