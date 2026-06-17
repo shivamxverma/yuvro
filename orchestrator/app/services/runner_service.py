@@ -15,14 +15,17 @@ async def wait_for_runner(base_url: str) -> bool:
             await asyncio.sleep(0.5)
     return False
 
-async def trigger_runner_start(base_url: str, project_id: str) -> None:
+async def trigger_runner_start(base_url: str, project_id: str, project_type: str) -> None:
     """Tell the runner to initialize the mounted project workspace."""
-    print(f"[RunnerService] Triggering runner workspace init for projectId={project_id} via {base_url}")
+    print(
+        f"[RunnerService] Triggering runner workspace init for "
+        f"projectId={project_id}, projectType={project_type} via {base_url}"
+    )
     async with httpx.AsyncClient() as client:
         try:
             resp = await client.post(
                 f"{base_url.rstrip('/')}/start",
-                json={"projectId": project_id},
+                json={"projectId": project_id, "projectType": project_type},
                 timeout=30.0
             )
             if resp.status_code != 200:

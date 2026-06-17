@@ -13,13 +13,17 @@ start_locks = {}
 class StartPayload(BaseModel):
     workspaceId: str
     projectId: str
+    projectType: str
 
 @router.post("/start")
 async def start_container(payload: StartPayload):
     workspace_id = payload.workspaceId.strip()
     project_id = payload.projectId.strip()
+    project_type = payload.projectType.strip().lower()
     if not workspace_id or not project_id:
         raise HTTPException(status_code=400, detail="workspaceId and projectId are required")
+    if not project_type:
+        raise HTTPException(status_code=400, detail="projectType is required")
         
     if project_id not in start_locks:
         start_locks[project_id] = asyncio.Lock()
@@ -40,7 +44,7 @@ async def start_container(payload: StartPayload):
         if not healthy:
             raise HTTPException(status_code=500, detail="Timeout: Runner service did not start in time.")
 
-        await runner_service.trigger_runner_start(public_base_url, project_id)
+        await runner_service.trigger_runner_start(public_base_url, project_id, project_type)
 
         return {"status": "started", "port": K8S_INGRESS_PORT, "baseUrl": public_base_url}
 

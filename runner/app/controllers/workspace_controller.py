@@ -6,8 +6,15 @@ import httpx
 from fastapi import Request, Response
 from app.core.config import BASE_DIR
 
-def setup_virtualenv_bg(base_dir: str):
+PYTHON_PROJECT_TYPES = {"python", "fastapi", "flask", "django"}
+
+
+def setup_virtualenv_bg(base_dir: str, project_type: str):
     """Run in background thread - create the workspace venv and install deps inside the pod."""
+    if project_type not in PYTHON_PROJECT_TYPES:
+        print(f"[BG] Skipping virtual environment setup for project type '{project_type}'.")
+        return
+
     venv_dir = os.path.join(base_dir, ".venv")
     requirements_file = os.path.join(base_dir, "requirements.txt")
 
@@ -37,9 +44,9 @@ def setup_virtualenv_bg(base_dir: str):
     except Exception as e:
         print(f"[BG setup_virtualenv Error] Failed: {e}")
 
-async def start_pod(project_id: str):
-    # Always run venv setup in background (non-blocking)
-    asyncio.get_event_loop().run_in_executor(None, setup_virtualenv_bg, BASE_DIR)
+async def start_pod(project_id: str, project_type: str):
+    # Create the workspace venv only for Python-family projects.
+    asyncio.get_event_loop().run_in_executor(None, setup_virtualenv_bg, BASE_DIR, project_type)
     return {"status": "started", "message": f"Workspace initializing for {project_id}"}
 
 async def get_port(repl_id: str, container_port: int):

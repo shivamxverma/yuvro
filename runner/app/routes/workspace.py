@@ -6,6 +6,7 @@ router = APIRouter()
 
 class StartPayload(BaseModel):
     projectId: str
+    projectType: str
 
 
 class CppRunPayload(BaseModel):
@@ -13,7 +14,7 @@ class CppRunPayload(BaseModel):
 
 @router.post("/start")
 async def start_pod_route(payload: StartPayload):
-    return await workspace_controller.start_pod(payload.projectId)
+    return await workspace_controller.start_pod(payload.projectId, payload.projectType)
 
 
 @router.post("/run/cpp")

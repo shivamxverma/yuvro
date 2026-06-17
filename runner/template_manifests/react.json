@@ -1,0 +1,42 @@
+{
+  "directories": [
+    {
+      "path": "src"
+    }
+  ],
+  "files": [
+    {
+      "contentHash": "2f6b736662b597b1ce4bacd8dfb2acf7fcdfe2bc3a625715bb94895f8049d666",
+      "path": "index.html",
+      "sizeBytes": 302
+    },
+    {
+      "contentHash": "644df9200357c6653cc13fb2267189c48bcb3025c51e8606ef3e0642ab72798b",
+      "path": "package.json",
+      "sizeBytes": 353
+    },
+    {
+      "contentHash": "d78ed23aaef0f5db74ce19f90e356d5b25253ae477e90e01b23e8dc14c8e320c",
+      "path": "vite.config.js",
+      "sizeBytes": 190
+    },
+    {
+      "contentHash": "46aa2f2a3fb3c4efd4686a3e4a1ec35601a7f9d0d9ec70bd240dabdca530a88b",
+      "path": "src/App.jsx",
+      "sizeBytes": 645
+    },
+    {
+      "contentHash": "4211f80f9fedf0e4c157317518388a8d7c6cf83c684cac93ead59415d0f9a136",
+      "path": "src/main.jsx",
+      "sizeBytes": 236
+    },
+    {
+      "contentHash": "e1e427ec17aa3c5eda46062cb2a448db08fc707076faae09110b5728cb3fdbea",
+      "path": "src/styles.css",
+      "sizeBytes": 1652
+    }
+  ],
+  "generatedAt": "2026-06-17T12:20:49.932748+00:00",
+  "templateType": "react",
+  "version": 1
+}

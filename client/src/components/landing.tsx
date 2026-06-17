@@ -76,11 +76,22 @@ const CppIcon = ({ className }: { className?: string }) => (
   </svg>
 );
 
+const ReactIcon = ({ className }: { className?: string }) => (
+  <svg className={className} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <rect width="24" height="24" rx="5.5" fill="#06141D" />
+    <circle cx="12" cy="12" r="1.8" fill="#61DAFB" />
+    <ellipse cx="12" cy="12" rx="7.1" ry="2.8" stroke="#61DAFB" strokeWidth="1.2" />
+    <ellipse cx="12" cy="12" rx="7.1" ry="2.8" transform="rotate(60 12 12)" stroke="#61DAFB" strokeWidth="1.2" />
+    <ellipse cx="12" cy="12" rx="7.1" ry="2.8" transform="rotate(120 12 12)" stroke="#61DAFB" strokeWidth="1.2" />
+  </svg>
+);
+
 const LANGUAGES = [
   { value: 'python', label: 'Python', icon: <PythonIcon className="w-full h-full" />, desc: 'Standard Python 3 backend environment' },
   { value: 'fastapi', label: 'FastAPI', icon: <FastApiIcon className="w-full h-full" />, desc: 'High-performance Python web APIs' },
   { value: 'django', label: 'Django', icon: <DjangoIcon className="w-full h-full" />, desc: 'The web framework for perfectionists' },
   { value: 'flask', label: 'Flask', icon: <FlaskIcon className="w-full h-full" />, desc: 'Lightweight WSGI web application framework' },
+  { value: 'react', label: 'React', icon: <ReactIcon className="w-full h-full" />, desc: 'Vite-powered React frontend workspace' },
   { value: 'cpp', label: 'C++', icon: <CppIcon className="w-full h-full" />, desc: 'Native C++ workspace with g++ compile-and-run' },
 ];
 

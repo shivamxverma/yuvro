@@ -16,7 +16,7 @@ from app.services.workspace_service import (
     serialize_node,
 )
 
-LIVE_SYNC_IGNORE_NAMES = {".git", "__pycache__", ".pytest_cache"}
+LIVE_SYNC_IGNORE_NAMES = {".git", ".venv", "__pycache__", ".pytest_cache", "node_modules"}
 
 
 def _now() -> datetime:

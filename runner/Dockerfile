@@ -5,6 +5,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     bash \
     git \
     g++ \
+    nodejs \
+    npm \
     procps \
     curl \
     && rm -rf /var/lib/apt/lists/*

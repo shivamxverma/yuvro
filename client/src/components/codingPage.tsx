@@ -380,7 +380,7 @@ const IDEPage = ({
     const startPromise = fetch(`${ORCHESTRATOR_URL}/start`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ workspaceId, projectId }),
+      body: JSON.stringify({ workspaceId, projectId, projectType }),
     })
       .then(async (response) => {
         if (!response.ok) {
@@ -410,7 +410,7 @@ const IDEPage = ({
   };
 
   useEffect(() => {
-    if (!loaded || projectType !== "cpp" || runnerBaseUrl || runnerStarting) return;
+    if (!loaded || !["cpp", "react"].includes(projectType) || runnerBaseUrl || runnerStarting) return;
     void ensureRunnerStarted();
   }, [loaded, projectType, runnerBaseUrl, runnerStarting]);
 
@@ -447,6 +447,7 @@ const IDEPage = ({
       const binary = entry.replace(/\.[^.]+$/, "") || "main";
       return `g++ -std=c++17 -O2 -Wall -Wextra "${entry}" -o "${binary}" && "./${binary}"`;
     }
+    if (projectType === "react") return "npm install --silent && npm run dev -- --host 0.0.0.0 --port 8000";
     if (projectType === "fastapi") return ".venv/bin/python -m uvicorn main:app --host 0.0.0.0 --port 8000 --reload";
     if (projectType === "django") return ".venv/bin/python manage.py runserver 0.0.0.0:8000";
     if (projectType === "flask") return ".venv/bin/python app.py";
@@ -483,6 +484,9 @@ const IDEPage = ({
     const command = getRunCommand();
 
     if (projectType === "cpp") {
+      return command;
+    }
+    if (projectType === "react") {
       return command;
     }
 
