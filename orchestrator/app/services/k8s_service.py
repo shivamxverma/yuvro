@@ -1,6 +1,7 @@
 import hashlib
 import base64
 import re
+import time
 
 from kubernetes import client, config
 from kubernetes.client.rest import ApiException
@@ -8,6 +9,7 @@ from kubernetes.client.rest import ApiException
 from app.config import (
     K8S_BASE_DOMAIN,
     K8S_DB_STORAGE_CLASS,
+    K8S_DB_READY_TIMEOUT_SECONDS,
     K8S_DB_STORAGE_SIZE,
     K8S_CONTEXT,
     K8S_INGRESS_PORT,
@@ -220,6 +222,15 @@ def _db_deployment_body(project_id: str, engine: str) -> client.V1Deployment:
         ]
         port = 5432
         data_mount_path = "/var/lib/postgresql/data"
+        readiness_probe = client.V1Probe(
+            _exec=client.V1ExecAction(
+                command=["sh", "-c", "pg_isready -U postgres -d yuvro_db -h 127.0.0.1 -p 5432"]
+            ),
+            initial_delay_seconds=5,
+            period_seconds=2,
+            timeout_seconds=2,
+            failure_threshold=15,
+        )
     else:
         image = MYSQL_IMAGE
         env = [
@@ -233,6 +244,15 @@ def _db_deployment_body(project_id: str, engine: str) -> client.V1Deployment:
         ]
         port = 3306
         data_mount_path = "/var/lib/mysql"
+        readiness_probe = client.V1Probe(
+            _exec=client.V1ExecAction(
+                command=["sh", "-c", 'mysqladmin ping -h 127.0.0.1 -uroot -p"$MYSQL_ROOT_PASSWORD" --silent']
+            ),
+            initial_delay_seconds=5,
+            period_seconds=2,
+            timeout_seconds=2,
+            failure_threshold=15,
+        )
 
     return client.V1Deployment(
         metadata=client.V1ObjectMeta(name=resource_name, namespace=K8S_NAMESPACE, labels=labels),
@@ -248,6 +268,7 @@ def _db_deployment_body(project_id: str, engine: str) -> client.V1Deployment:
                             image=image,
                             ports=[client.V1ContainerPort(container_port=port)],
                             env=env,
+                            readiness_probe=readiness_probe,
                             volume_mounts=[
                                 client.V1VolumeMount(
                                     name="db-data",
@@ -352,6 +373,68 @@ def _ensure_db_pvc(project_id: str, engine: str) -> None:
             namespace=K8S_NAMESPACE,
             body=_db_pvc_body(project_id, engine),
         )
+
+
+def _pod_failure_reason(pod: client.V1Pod | None) -> str | None:
+    if pod is None:
+        return None
+
+    statuses = pod.status.container_statuses or []
+    for status in statuses:
+        state = status.state
+        if state and state.waiting and state.waiting.reason:
+            message = state.waiting.message or ""
+            return f"{state.waiting.reason}: {message}".strip(": ")
+        if state and state.terminated and state.terminated.reason:
+            message = state.terminated.message or ""
+            return f"{state.terminated.reason}: {message}".strip(": ")
+
+    return pod.status.phase if pod.status and pod.status.phase else None
+
+
+def wait_for_database_resources(project_id: str, engine: str, timeout_seconds: int = K8S_DB_READY_TIMEOUT_SECONDS) -> None:
+    clients = _load_clients()
+    resource_name = db_resource_name(project_id, engine)
+    selector = f"app={resource_name},project-id={project_id},engine={engine}"
+    deadline = time.monotonic() + timeout_seconds
+    last_reason = "database pod has not reported readiness yet"
+
+    while time.monotonic() < deadline:
+        pods = clients["core"].list_namespaced_pod(
+            namespace=K8S_NAMESPACE,
+            label_selector=selector,
+        ).items
+
+        ready_pod = None
+        if pods:
+            for pod in pods:
+                conditions = pod.status.conditions or []
+                is_ready = any(condition.type == "Ready" and condition.status == "True" for condition in conditions)
+                if is_ready:
+                    ready_pod = pod
+                    break
+            if ready_pod is None:
+                last_reason = _pod_failure_reason(pods[0]) or last_reason
+
+        if ready_pod is not None:
+            try:
+                endpoints = clients["core"].read_namespaced_endpoints(name=resource_name, namespace=K8S_NAMESPACE)
+            except ApiException as exc:
+                if exc.status != 404:
+                    raise
+                endpoints = None
+
+            subsets = endpoints.subsets if endpoints else []
+            has_ready_endpoint = any(subset.addresses for subset in subsets)
+            if has_ready_endpoint:
+                return
+            last_reason = "database service has no ready endpoints yet"
+
+        time.sleep(2)
+
+    raise TimeoutError(
+        f"Timed out waiting for {engine} database '{resource_name}' to become ready. Last observed state: {last_reason}."
+    )
 
 
 def ensure_runner_resources(workspace_id: str, project_id: str, env_vars: dict[str, str]) -> str:

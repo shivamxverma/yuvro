@@ -22,10 +22,11 @@ K8S_BASE_DOMAIN = os.getenv("K8S_BASE_DOMAIN", "127.0.0.1.nip.io")
 K8S_INGRESS_SCHEME = os.getenv("K8S_INGRESS_SCHEME", "http")
 K8S_INGRESS_PORT = int(os.getenv("K8S_INGRESS_PORT", "8080"))
 K8S_WORKSPACE_ROOT = os.getenv("K8S_WORKSPACE_ROOT", "/workspaces-host")
-POSTGRES_IMAGE = os.getenv("K8S_POSTGRES_IMAGE", "postgres:15-slim")
+POSTGRES_IMAGE = os.getenv("K8S_POSTGRES_IMAGE", "postgres:15")
 MYSQL_IMAGE = os.getenv("K8S_MYSQL_IMAGE", "mysql:8.0")
 K8S_DB_STORAGE_SIZE = os.getenv("K8S_DB_STORAGE_SIZE", "5Gi")
 K8S_DB_STORAGE_CLASS = os.getenv("K8S_DB_STORAGE_CLASS")
+K8S_DB_READY_TIMEOUT_SECONDS = int(os.getenv("K8S_DB_READY_TIMEOUT_SECONDS", "90"))
 
 
 def generate_secret_value(length: int = 24) -> str:

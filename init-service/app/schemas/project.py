@@ -15,6 +15,16 @@ class WorkspaceBootstrapClonePayload(BaseModel):
     githubUrl: str = Field(..., min_length=1, max_length=2048)
 
 
+class ExistingWorkspaceTemplatePayload(BaseModel):
+    projectName: str = Field(..., min_length=1, max_length=120)
+    type: str = Field(..., min_length=1, max_length=40)
+
+
+class ExistingWorkspaceClonePayload(BaseModel):
+    projectName: str = Field(..., min_length=1, max_length=120)
+    githubUrl: str = Field(..., min_length=1, max_length=2048)
+
+
 class WorkspaceSummary(BaseModel):
     id: str
     ownerUserId: str
@@ -32,6 +42,10 @@ class ProjectSummary(BaseModel):
     type: str
     createdAt: datetime
     updatedAt: datetime
+
+
+class WorkspaceWithProjectsSummary(WorkspaceSummary):
+    projects: list[ProjectSummary]
 
 
 class NodeSummary(BaseModel):
@@ -62,3 +76,7 @@ class ProjectDetailResponse(BaseModel):
 
 class ProjectNodesResponse(BaseModel):
     nodes: list[NodeSummary]
+
+
+class WorkspaceListResponse(BaseModel):
+    workspaces: list[WorkspaceWithProjectsSummary]

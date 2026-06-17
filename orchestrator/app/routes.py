@@ -63,7 +63,7 @@ async def start_db_container_route(payload: DbStartPayload):
     try:
         print(f"[Orchestrator] Provisioning Kubernetes DB {engine} for projectId={project_id}...")
         connection = k8s_service.ensure_database_resources(project_id, engine)
-        await asyncio.sleep(2.5)
+        await asyncio.to_thread(k8s_service.wait_for_database_resources, project_id, engine)
         return connection
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

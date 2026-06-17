@@ -37,6 +37,36 @@ spec:
               value: /init-service/runner/templates
             - name: TEMPLATE_MANIFESTS_DIR
               value: /init-service/runner/template_manifests
+            - name: S3_BUCKET
+              valueFrom:
+                secretKeyRef:
+                  name: yuvro-app-secrets
+                  key: S3_BUCKET
+                  optional: true
+            - name: AWS_ACCESS_KEY_ID
+              valueFrom:
+                secretKeyRef:
+                  name: yuvro-app-secrets
+                  key: AWS_ACCESS_KEY_ID
+                  optional: true
+            - name: AWS_SECRET_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: yuvro-app-secrets
+                  key: AWS_SECRET_ACCESS_KEY
+                  optional: true
+            - name: S3_ENDPOINT
+              valueFrom:
+                secretKeyRef:
+                  name: yuvro-app-secrets
+                  key: S3_ENDPOINT
+                  optional: true
+            - name: ADMIN_API_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: yuvro-app-secrets
+                  key: ADMIN_API_TOKEN
+                  optional: true
           volumeMounts:
             - name: workspace-root
               mountPath: /workspaces-host
