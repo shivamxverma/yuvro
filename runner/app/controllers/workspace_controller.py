@@ -1,6 +1,7 @@
 import os
 import asyncio
 import subprocess
+import tempfile
 import httpx
 from fastapi import Request, Response
 from app.core.config import BASE_DIR
@@ -74,3 +75,67 @@ async def proxy(repl_id: str, path: str, request: Request, container_port: int):
                 status_code=503,
                 media_type="text/plain",
             )
+
+
+def _resolve_cpp_entry(entry_path: str) -> str:
+    normalized = (entry_path or "").strip()
+    if not normalized:
+        raise ValueError("Entry file is required.")
+
+    abs_path = os.path.realpath(os.path.join(BASE_DIR, normalized))
+    base_path = os.path.realpath(BASE_DIR)
+    if abs_path != base_path and not abs_path.startswith(base_path + os.sep):
+        raise ValueError("Entry file must stay inside the workspace.")
+    if not os.path.isfile(abs_path):
+        raise ValueError("Entry file was not found.")
+    if os.path.splitext(abs_path)[1].lower() not in {".cpp", ".cc", ".cxx"}:
+        raise ValueError("Only C++ source files can be executed with this endpoint.")
+    return abs_path
+
+
+def _run_cpp_sync(entry_path: str) -> dict:
+    resolved_entry = _resolve_cpp_entry(entry_path)
+
+    with tempfile.TemporaryDirectory(prefix="yuvro_cpp_run_") as temp_dir:
+        binary_path = os.path.join(temp_dir, "program")
+
+        compile_result = subprocess.run(
+            ["g++", "-std=c++17", "-O2", "-Wall", "-Wextra", resolved_entry, "-o", binary_path],
+            cwd=BASE_DIR,
+            capture_output=True,
+            text=True,
+            timeout=30,
+        )
+        compile_output = f"{compile_result.stdout}{compile_result.stderr}"
+        if compile_result.returncode != 0:
+            return {
+                "status": "compile_error",
+                "exitCode": compile_result.returncode,
+                "output": compile_output,
+            }
+
+        try:
+            run_result = subprocess.run(
+                [binary_path],
+                cwd=BASE_DIR,
+                capture_output=True,
+                text=True,
+                timeout=10,
+            )
+        except subprocess.TimeoutExpired as exc:
+            timeout_output = f"{exc.stdout or ''}{exc.stderr or ''}"
+            return {
+                "status": "timeout",
+                "exitCode": None,
+                "output": f"{timeout_output}\nExecution timed out after 10 seconds.\n".lstrip(),
+            }
+
+        return {
+            "status": "ok" if run_result.returncode == 0 else "runtime_error",
+            "exitCode": run_result.returncode,
+            "output": f"{compile_output}{run_result.stdout}{run_result.stderr}",
+        }
+
+
+async def run_cpp(entry_path: str) -> dict:
+    return await asyncio.to_thread(_run_cpp_sync, entry_path)

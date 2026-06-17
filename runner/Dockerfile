@@ -20,6 +20,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY app ./app
 COPY scripts ./scripts
 
+RUN install -m 0755 /runner-app/scripts/run-cpp /usr/local/bin/run-cpp
+
 # Append custom cd wrapper to /etc/bash.bashrc and /root/.bashrc to prevent directory escaping and set prompt
 RUN cat /runner-app/scripts/cd_wrapper.sh >> /etc/bash.bashrc && cat /runner-app/scripts/cd_wrapper.sh >> /root/.bashrc
 

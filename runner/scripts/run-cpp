@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+source_file="${1:-main.cpp}"
+
+if [ ! -f "$source_file" ]; then
+    echo "yuvro-terminal: run-cpp: file not found: $source_file"
+    exit 1
+fi
+
+case "$source_file" in
+    *.cpp|*.cc|*.cxx) ;;
+    *)
+        echo "yuvro-terminal: run-cpp: expected a .cpp, .cc, or .cxx file"
+        exit 1
+        ;;
+esac
+
+output_file="$(mktemp /tmp/yuvro-cpp-XXXXXX)"
+cleanup() {
+    rm -f "$output_file"
+}
+trap cleanup EXIT
+
+g++ -std=c++17 -O2 -Wall -Wextra "$source_file" -o "$output_file"
+"$output_file"

@@ -109,6 +109,7 @@ const IDEPage = ({
   const runCompletionTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const captureOutputRef = useRef<((data: { data: string }) => void) | null>(null);
   const runnerStartPromiseRef = useRef<Promise<string | null> | null>(null);
+  const cppRunAbortRef = useRef<AbortController | null>(null);
 
   const socket = useSocket(projectId, runnerBaseUrl);
   const sidebar = useResize("horizontal", 230, 150, 420);
@@ -119,6 +120,8 @@ const IDEPage = ({
   }, [loadedDirectoryIds]);
 
   useEffect(() => {
+    cppRunAbortRef.current?.abort();
+    cppRunAbortRef.current = null;
     setTerminalReady(false);
     setRunnerBaseUrl(null);
     setRunnerStarting(false);
@@ -132,13 +135,30 @@ const IDEPage = ({
   useEffect(() => {
     if (!socket) return;
 
+    const requestTerminal = () => {
+      setTerminalReady(false);
+      socket.emit("requestTerminal");
+    };
+
     const handleTerminalReady = () => {
       setTerminalReady(true);
     };
 
+    const handleDisconnect = () => {
+      setTerminalReady(false);
+    };
+
+    if (socket.connected) {
+      requestTerminal();
+    }
+
+    socket.on("connect", requestTerminal);
+    socket.on("disconnect", handleDisconnect);
     socket.on("terminalReady", handleTerminalReady);
 
     return () => {
+      socket.off("connect", requestTerminal);
+      socket.off("disconnect", handleDisconnect);
       socket.off("terminalReady", handleTerminalReady);
     };
   }, [socket]);
@@ -389,6 +409,11 @@ const IDEPage = ({
     return startPromise;
   };
 
+  useEffect(() => {
+    if (!loaded || projectType !== "cpp" || runnerBaseUrl || runnerStarting) return;
+    void ensureRunnerStarted();
+  }, [loaded, projectType, runnerBaseUrl, runnerStarting]);
+
   const handleProjectSwitch = async (nextProjectId: string) => {
     if (nextProjectId === projectId) return;
     await flushDirtyFiles();
@@ -403,11 +428,22 @@ const IDEPage = ({
   const getRunCommand = (): string => {
     const selectedRelativePath = selectedFile?.path.replace(/^\//, "");
     const selectedExtension = selectedRelativePath?.split(".").pop()?.toLowerCase();
-    const selectedStem = selectedRelativePath?.replace(/\.[^.]+$/, "") || "program";
+    const selectedIsCpp = !!selectedExtension && ["cpp", "cc", "cxx"].includes(selectedExtension);
 
-    if (projectType === "cpp") {
-      const cppEntry = rootLevelFiles.find((f) => /\.(cpp|cc|cxx)$/i.test(f.name));
-      const entry = cppEntry?.path.replace(/^\//, "") || "main.cpp";
+    const getCppEntryPath = (): string => {
+      if (projectType === "cpp") {
+        const cppEntry = rootLevelFiles.find((f) => /\.(cpp|cc|cxx)$/i.test(f.name));
+        return cppEntry?.path.replace(/^\//, "") || "main.cpp";
+      }
+      if (selectedRelativePath && selectedIsCpp) {
+        return selectedRelativePath;
+      }
+      const rootCppFile = rootLevelFiles.find((f) => /\.(cpp|cc|cxx)$/i.test(f.name));
+      return rootCppFile?.path.replace(/^\//, "") || "main.cpp";
+    };
+
+    if (projectType === "cpp" || selectedIsCpp) {
+      const entry = getCppEntryPath();
       const binary = entry.replace(/\.[^.]+$/, "") || "main";
       return `g++ -std=c++17 -O2 -Wall -Wextra "${entry}" -o "${binary}" && "./${binary}"`;
     }
@@ -416,19 +452,24 @@ const IDEPage = ({
     if (projectType === "flask") return ".venv/bin/python app.py";
     if (rootLevelFiles.some((f) => f.name === "manage.py")) return ".venv/bin/python manage.py runserver 0.0.0.0:8000";
     if (rootLevelFiles.some((f) => f.name === "app.py")) return ".venv/bin/python app.py";
-    if (selectedRelativePath && selectedExtension && ["cpp", "cc", "cxx"].includes(selectedExtension)) {
-      return `g++ -std=c++17 -O2 -Wall -Wextra "${selectedRelativePath}" -o "${selectedStem}" && "./${selectedStem}"`;
-    }
-    const rootCppFile = rootLevelFiles.find((f) => /\.(cpp|cc|cxx)$/i.test(f.name));
-    if (rootCppFile) {
-      const entry = rootCppFile.path.replace(/^\//, "");
-      const binary = entry.replace(/\.[^.]+$/, "") || "main";
-      return `g++ -std=c++17 -O2 -Wall -Wextra "${entry}" -o "${binary}" && "./${binary}"`;
-    }
     if (selectedFile && selectedFile.type === Type.FILE) {
       return `.venv/bin/python ${selectedFile.path.replace(/^\//, "")}`;
     }
     return ".venv/bin/python main.py";
+  };
+
+  const getCppEntryPath = (): string | null => {
+    const selectedRelativePath = selectedFile?.path.replace(/^\//, "");
+    const selectedExtension = selectedRelativePath?.split(".").pop()?.toLowerCase();
+
+    if (projectType === "cpp") {
+      const cppEntry = rootLevelFiles.find((f) => /\.(cpp|cc|cxx)$/i.test(f.name));
+      return cppEntry?.path.replace(/^\//, "") || "main.cpp";
+    }
+    if (selectedRelativePath && selectedExtension && ["cpp", "cc", "cxx"].includes(selectedExtension)) {
+      return selectedRelativePath;
+    }
+    return null;
   };
 
   const isOneShotRun = (): boolean => {
@@ -456,6 +497,7 @@ const IDEPage = ({
 
   useEffect(() => {
     return () => {
+      cppRunAbortRef.current?.abort();
       if (runTimeoutRef.current) clearTimeout(runTimeoutRef.current);
       if (runCompletionTimeoutRef.current) clearTimeout(runCompletionTimeoutRef.current);
       if (socket && captureOutputRef.current) {
@@ -463,6 +505,55 @@ const IDEPage = ({
       }
     };
   }, [socket]);
+
+  const executeCppRun = async (baseUrl: string) => {
+    const entryPath = getCppEntryPath();
+    if (!entryPath) {
+      setRunOutput("No C++ source file selected.\n");
+      return;
+    }
+
+    cppRunAbortRef.current?.abort();
+    const controller = new AbortController();
+    cppRunAbortRef.current = controller;
+
+    setBottomTab("output");
+    setRunOutput("⏳ Running…\n");
+    setIsRunning(true);
+
+    try {
+      const response = await fetch(`${baseUrl}/run/cpp`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ entryPath }),
+        signal: controller.signal,
+      });
+
+      const payload = (await response.json().catch(() => ({}))) as {
+        output?: string;
+        status?: string;
+        detail?: string;
+      };
+
+      if (!response.ok) {
+        throw new Error(payload.detail || "Failed to run C++ code.");
+      }
+
+      setRunOutput(payload.output || "");
+    } catch (error: unknown) {
+      if (error instanceof DOMException && error.name === "AbortError") {
+        setRunOutput((prev) => `${prev}\n🛑 Process stopped manually.\n`);
+      } else {
+        const message = error instanceof Error ? error.message : "Failed to run C++ code.";
+        setRunOutput(`${message}\n`);
+      }
+    } finally {
+      if (cppRunAbortRef.current === controller) {
+        cppRunAbortRef.current = null;
+      }
+      setIsRunning(false);
+    }
+  };
 
   const executeRun = () => {
     if (!socket || !terminalReady) return;
@@ -528,6 +619,11 @@ const IDEPage = ({
       return;
     }
 
+    if (getCppEntryPath()) {
+      await executeCppRun(baseUrl);
+      return;
+    }
+
     if (!socket || !terminalReady) {
       setRunOutput("⏳ Starting runtime…\n");
       setPendingRunnerAction("run");
@@ -538,6 +634,11 @@ const IDEPage = ({
   };
 
   const handleStop = () => {
+    if (cppRunAbortRef.current) {
+      cppRunAbortRef.current.abort();
+      cppRunAbortRef.current = null;
+      return;
+    }
     if (!socket) return;
     setIsRunning(false);
 
@@ -567,10 +668,10 @@ const IDEPage = ({
   };
 
   useEffect(() => {
-    if (pendingRunnerAction !== "run" || !socket || !terminalReady) return;
+    if (pendingRunnerAction !== "run" || !socket || !terminalReady || getCppEntryPath()) return;
     setPendingRunnerAction(null);
     executeRun();
-  }, [pendingRunnerAction, socket, terminalReady]);
+  }, [pendingRunnerAction, socket, terminalReady, projectType, selectedFile, rootLevelFiles]);
 
   useEffect(() => {
     const interval = window.setInterval(() => {
@@ -623,6 +724,7 @@ const IDEPage = ({
         onRun={handleRun}
         isRunning={isRunning}
         isRunnerStarting={runnerStarting}
+        disableRun={projectType === "cpp"}
         onStop={handleStop}
         onRestart={handleRestart}
         onTogglePreview={() => setBottomTab((t) => (t === "preview" ? "terminal" : "preview"))}

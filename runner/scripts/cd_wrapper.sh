@@ -41,3 +41,33 @@ set_prompt() {
     PS1="\[\e[44m\e[1;97m\] ${rel_dir} \[\e[0m\]\n\[\e[1;32m\]>\[\e[0m\] "
 }
 PROMPT_COMMAND=set_prompt
+
+run-cpp() {
+    local source_file="${1:-main.cpp}"
+
+    if [ ! -f "$source_file" ]; then
+        echo "yuvro-terminal: run-cpp: file not found: $source_file"
+        return 1
+    fi
+
+    case "$source_file" in
+        *.cpp|*.cc|*.cxx) ;;
+        *)
+            echo "yuvro-terminal: run-cpp: expected a .cpp, .cc, or .cxx file"
+            return 1
+            ;;
+    esac
+
+    local output_file
+    output_file="$(mktemp /tmp/yuvro-cpp-XXXXXX)" || return 1
+
+    if ! g++ -std=c++17 -O2 -Wall -Wextra "$source_file" -o "$output_file"; then
+        rm -f "$output_file"
+        return 1
+    fi
+
+    "$output_file"
+    local exit_code=$?
+    rm -f "$output_file"
+    return $exit_code
+}

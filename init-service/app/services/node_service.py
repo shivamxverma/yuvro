@@ -173,6 +173,8 @@ def read_content(owner_user_id: str, node_id: str) -> dict:
                 content = handle.read()
         except FileNotFoundError:
             content = ""
+        except UnicodeDecodeError:
+            content = "BINARY_FILE"
         return {"node": serialize_node(session, node), "content": content}
 
 

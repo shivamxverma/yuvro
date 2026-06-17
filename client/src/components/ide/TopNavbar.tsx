@@ -9,6 +9,7 @@ interface TopNavbarProps {
   onRun: () => void;
   isRunning: boolean;
   isRunnerStarting?: boolean;
+  disableRun?: boolean;
   onStop: () => void;
   onRestart: () => void;
   onTogglePreview: () => void;
@@ -22,6 +23,7 @@ export function TopNavbar({
   onRun,
   isRunning,
   isRunnerStarting = false,
+  disableRun = false,
   onStop,
   onRestart,
   onTogglePreview,
@@ -76,13 +78,19 @@ export function TopNavbar({
         {!isRunning ? (
           <button
             onClick={onRun}
-            disabled={isRunnerStarting}
+            disabled={isRunnerStarting || disableRun}
+            title={disableRun ? "Use the terminal for C++ projects." : undefined}
             className="flex items-center gap-1.5 px-3.5 py-1.5 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 disabled:from-emerald-500/70 disabled:to-teal-500/70 border border-emerald-500/10 text-white text-[11px] font-bold tracking-wide rounded-md shadow-lg shadow-emerald-500/10 cursor-pointer disabled:cursor-wait transition duration-150 focus-visible:ring-2 focus-visible:ring-emerald-500 outline-none active:scale-[0.98] disabled:active:scale-100"
           >
             {isRunnerStarting ? (
               <>
                 <Loader2 className="w-3.5 h-3.5 animate-spin" aria-hidden="true" />
                 <span>Starting…</span>
+              </>
+            ) : disableRun ? (
+              <>
+                <Play className="w-3.5 h-3.5 fill-current" aria-hidden="true" />
+                <span>Use Terminal</span>
               </>
             ) : (
               <>

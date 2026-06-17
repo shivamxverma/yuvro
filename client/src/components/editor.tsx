@@ -126,7 +126,8 @@ export const Editor = ({
     );
   }
 
-  if (selectedFile.content === "BINARY_DB_FILE") {
+  if (selectedFile.content === "BINARY_DB_FILE" || selectedFile.content === "BINARY_FILE") {
+    const isDatabaseFile = selectedFile.content === "BINARY_DB_FILE";
     return (
       <div className="w-full h-full bg-[#030712] flex flex-col items-center justify-center p-8 text-center select-none overflow-y-auto">
         <div className="max-w-md w-full flex flex-col items-center gap-6">
@@ -136,11 +137,19 @@ export const Editor = ({
           <div className="flex flex-col items-center gap-2">
             <h2 className="text-lg font-bold text-slate-100 m-0">{selectedFile.name}</h2>
             <p className="text-xs text-slate-400 leading-relaxed max-w-sm">
-              This is a binary SQLite database file. It cannot be opened or edited as a text file.
+              {isDatabaseFile
+                ? "This is a binary SQLite database file. It cannot be opened or edited as a text file."
+                : "This is a binary file. It cannot be opened or edited as a text file."}
             </p>
-            <p className="text-[11px] text-slate-500 max-w-xs leading-normal">
-              Please use the <strong>Database Viewer</strong> panel in the bottom tab to inspect its schema, run SQL queries, and browse its tables.
-            </p>
+            {isDatabaseFile ? (
+              <p className="text-[11px] text-slate-500 max-w-xs leading-normal">
+                Please use the <strong>Database Viewer</strong> panel in the bottom tab to inspect its schema, run SQL queries, and browse its tables.
+              </p>
+            ) : (
+              <p className="text-[11px] text-slate-500 max-w-xs leading-normal">
+                Open the source file instead, or run the binary from the terminal if that is what you intended.
+              </p>
+            )}
           </div>
         </div>
       </div>
