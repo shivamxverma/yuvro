@@ -1,4 +1,5 @@
 import os
+import secrets
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -23,6 +24,12 @@ K8S_INGRESS_PORT = int(os.getenv("K8S_INGRESS_PORT", "8080"))
 K8S_WORKSPACE_ROOT = os.getenv("K8S_WORKSPACE_ROOT", "/workspaces-host")
 POSTGRES_IMAGE = os.getenv("K8S_POSTGRES_IMAGE", "postgres:15-slim")
 MYSQL_IMAGE = os.getenv("K8S_MYSQL_IMAGE", "mysql:8.0")
+K8S_DB_STORAGE_SIZE = os.getenv("K8S_DB_STORAGE_SIZE", "5Gi")
+K8S_DB_STORAGE_CLASS = os.getenv("K8S_DB_STORAGE_CLASS")
+
+
+def generate_secret_value(length: int = 24) -> str:
+    return secrets.token_urlsafe(length)
 
 def get_runner_env() -> dict:
     """Read AWS and S3 env variables from runner/.env and process environment to propagate to container."""

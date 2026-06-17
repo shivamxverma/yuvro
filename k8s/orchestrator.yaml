@@ -13,6 +13,9 @@ rules:
   - apiGroups: [""]
     resources: ["services"]
     verbs: ["get", "list", "watch", "create", "patch", "update"]
+  - apiGroups: [""]
+    resources: ["secrets", "persistentvolumeclaims"]
+    verbs: ["get", "list", "watch", "create", "patch", "update"]
   - apiGroups: ["apps"]
     resources: ["deployments"]
     verbs: ["get", "list", "watch", "create", "patch", "update"]
@@ -80,6 +83,8 @@ spec:
               value: yuvro-runner:latest
             - name: K8S_RUNNER_IMAGE_PULL_POLICY
               value: IfNotPresent
+            - name: K8S_DB_STORAGE_SIZE
+              value: 5Gi
           volumeMounts:
             - name: workspace-root
               mountPath: /workspaces-host

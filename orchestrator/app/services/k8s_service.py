@@ -1,4 +1,5 @@
 import hashlib
+import base64
 import re
 
 from kubernetes import client, config
@@ -6,6 +7,8 @@ from kubernetes.client.rest import ApiException
 
 from app.config import (
     K8S_BASE_DOMAIN,
+    K8S_DB_STORAGE_CLASS,
+    K8S_DB_STORAGE_SIZE,
     K8S_CONTEXT,
     K8S_INGRESS_PORT,
     K8S_INGRESS_SCHEME,
@@ -16,6 +19,7 @@ from app.config import (
     RUNNER_IMAGE,
     RUNNER_IMAGE_PULL_POLICY,
     RUNNER_INTERNAL_PORT,
+    generate_secret_value,
 )
 
 
@@ -62,6 +66,14 @@ def runner_resource_name(project_id: str) -> str:
 
 def db_resource_name(project_id: str, engine: str) -> str:
     return _safe_name(engine, project_id)
+
+
+def db_secret_name(project_id: str, engine: str) -> str:
+    return _safe_name(f"{engine}-secret", project_id)
+
+
+def db_pvc_name(project_id: str, engine: str) -> str:
+    return _safe_name(f"{engine}-data", project_id)
 
 
 def runner_public_host(project_id: str) -> str:
@@ -190,6 +202,8 @@ def _ingress_body(project_id: str) -> client.V1Ingress:
 
 def _db_deployment_body(project_id: str, engine: str) -> client.V1Deployment:
     resource_name = db_resource_name(project_id, engine)
+    secret_name = db_secret_name(project_id, engine)
+    pvc_name = db_pvc_name(project_id, engine)
     labels = {"app": resource_name, "project-id": project_id, "engine": engine}
 
     if engine == "postgres":
@@ -197,16 +211,28 @@ def _db_deployment_body(project_id: str, engine: str) -> client.V1Deployment:
         env = [
             client.V1EnvVar(name="POSTGRES_DB", value="yuvro_db"),
             client.V1EnvVar(name="POSTGRES_USER", value="postgres"),
-            client.V1EnvVar(name="POSTGRES_PASSWORD", value="secret"),
+            client.V1EnvVar(
+                name="POSTGRES_PASSWORD",
+                value_from=client.V1EnvVarSource(
+                    secret_key_ref=client.V1SecretKeySelector(name=secret_name, key="password")
+                ),
+            ),
         ]
         port = 5432
+        data_mount_path = "/var/lib/postgresql/data"
     else:
         image = MYSQL_IMAGE
         env = [
             client.V1EnvVar(name="MYSQL_DATABASE", value="yuvro_db"),
-            client.V1EnvVar(name="MYSQL_ROOT_PASSWORD", value="secret"),
+            client.V1EnvVar(
+                name="MYSQL_ROOT_PASSWORD",
+                value_from=client.V1EnvVarSource(
+                    secret_key_ref=client.V1SecretKeySelector(name=secret_name, key="password")
+                ),
+            ),
         ]
         port = 3306
+        data_mount_path = "/var/lib/mysql"
 
     return client.V1Deployment(
         metadata=client.V1ObjectMeta(name=resource_name, namespace=K8S_NAMESPACE, labels=labels),
@@ -222,8 +248,22 @@ def _db_deployment_body(project_id: str, engine: str) -> client.V1Deployment:
                             image=image,
                             ports=[client.V1ContainerPort(container_port=port)],
                             env=env,
+                            volume_mounts=[
+                                client.V1VolumeMount(
+                                    name="db-data",
+                                    mount_path=data_mount_path,
+                                )
+                            ],
                         )
-                    ]
+                    ],
+                    volumes=[
+                        client.V1Volume(
+                            name="db-data",
+                            persistent_volume_claim=client.V1PersistentVolumeClaimVolumeSource(
+                                claim_name=pvc_name
+                            ),
+                        )
+                    ],
                 ),
             ),
         ),
@@ -243,6 +283,32 @@ def _db_service_body(project_id: str, engine: str) -> client.V1Service:
     )
 
 
+def _db_secret_body(project_id: str, engine: str, password: str) -> client.V1Secret:
+    resource_name = db_resource_name(project_id, engine)
+    labels = {"app": resource_name, "project-id": project_id, "engine": engine}
+    return client.V1Secret(
+        metadata=client.V1ObjectMeta(name=db_secret_name(project_id, engine), namespace=K8S_NAMESPACE, labels=labels),
+        type="Opaque",
+        string_data={"password": password},
+    )
+
+
+def _db_pvc_body(project_id: str, engine: str) -> client.V1PersistentVolumeClaim:
+    resource_name = db_resource_name(project_id, engine)
+    labels = {"app": resource_name, "project-id": project_id, "engine": engine}
+    pvc_spec = client.V1PersistentVolumeClaimSpec(
+        access_modes=["ReadWriteOnce"],
+        resources=client.V1VolumeResourceRequirements(requests={"storage": K8S_DB_STORAGE_SIZE}),
+    )
+    if K8S_DB_STORAGE_CLASS:
+        pvc_spec.storage_class_name = K8S_DB_STORAGE_CLASS
+
+    return client.V1PersistentVolumeClaim(
+        metadata=client.V1ObjectMeta(name=db_pvc_name(project_id, engine), namespace=K8S_NAMESPACE, labels=labels),
+        spec=pvc_spec,
+    )
+
+
 def _create_or_patch_resource(read_fn, create_fn, patch_fn, name: str, body) -> None:
     try:
         read_fn(name=name, namespace=K8S_NAMESPACE)
@@ -251,6 +317,41 @@ def _create_or_patch_resource(read_fn, create_fn, patch_fn, name: str, body) -> 
         if exc.status != 404:
             raise
         create_fn(namespace=K8S_NAMESPACE, body=body)
+
+
+def _ensure_db_secret(project_id: str, engine: str) -> str:
+    clients = _load_clients()
+    secret_name = db_secret_name(project_id, engine)
+    try:
+        secret = clients["core"].read_namespaced_secret(name=secret_name, namespace=K8S_NAMESPACE)
+        encoded_password = (secret.data or {}).get("password")
+        if not encoded_password:
+            raise ValueError(f"Database secret '{secret_name}' is missing the password key.")
+        return base64.b64decode(encoded_password).decode("utf-8")
+    except ApiException as exc:
+        if exc.status != 404:
+            raise
+
+    password = generate_secret_value()
+    clients["core"].create_namespaced_secret(
+        namespace=K8S_NAMESPACE,
+        body=_db_secret_body(project_id, engine, password),
+    )
+    return password
+
+
+def _ensure_db_pvc(project_id: str, engine: str) -> None:
+    clients = _load_clients()
+    pvc_name = db_pvc_name(project_id, engine)
+    try:
+        clients["core"].read_namespaced_persistent_volume_claim(name=pvc_name, namespace=K8S_NAMESPACE)
+    except ApiException as exc:
+        if exc.status != 404:
+            raise
+        clients["core"].create_namespaced_persistent_volume_claim(
+            namespace=K8S_NAMESPACE,
+            body=_db_pvc_body(project_id, engine),
+        )
 
 
 def ensure_runner_resources(workspace_id: str, project_id: str, env_vars: dict[str, str]) -> str:
@@ -285,6 +386,8 @@ def ensure_runner_resources(workspace_id: str, project_id: str, env_vars: dict[s
 def ensure_database_resources(project_id: str, engine: str) -> dict:
     clients = _load_clients()
     resource_name = db_resource_name(project_id, engine)
+    password = _ensure_db_secret(project_id, engine)
+    _ensure_db_pvc(project_id, engine)
 
     _create_or_patch_resource(
         clients["apps"].read_namespaced_deployment,
@@ -307,6 +410,6 @@ def ensure_database_resources(project_id: str, engine: str) -> dict:
         "host": resource_name,
         "port": 5432 if engine == "postgres" else 3306,
         "user": "postgres" if engine == "postgres" else "root",
-        "password": "secret",
+        "password": password,
         "database": "yuvro_db",
     }
