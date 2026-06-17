@@ -1,11 +1,14 @@
 import { useState } from "react";
 import { LockKeyhole, Mail, UserRound } from "lucide-react";
+import { useSearchParams } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
+import { INIT_SERVICE_URL } from "../lib/api";
 
 type Mode = "signin" | "signup";
 
 export function AuthPage() {
   const { signIn, signUp } = useAuth();
+  const [searchParams] = useSearchParams();
   const [mode, setMode] = useState<Mode>("signin");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -14,6 +17,14 @@ export function AuthPage() {
   const [error, setError] = useState("");
 
   const isSignup = mode === "signup";
+  const authError = searchParams.get("authError");
+
+  const oauthErrorMessage =
+    authError === "account_exists_different_signin_method"
+      ? "This email is already registered with email and password. Sign in with that method."
+      : authError === "oauth_failed"
+        ? "Google sign-in could not be completed."
+        : "";
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -30,6 +41,11 @@ export function AuthPage() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleGoogleSignIn = () => {
+    const origin = window.location.origin;
+    window.location.assign(`${INIT_SERVICE_URL}/auth/google?origin=${encodeURIComponent(origin)}`);
   };
 
   return (
@@ -110,8 +126,8 @@ export function AuthPage() {
                     <div className="flex items-center gap-3 rounded-2xl border border-slate-800 bg-slate-900/80 px-4 py-3">
                       <UserRound className="h-4 w-4 text-slate-500" />
                       <input
-                      value={name}
-                      onChange={(e) => setName(e.target.value)}
+                        value={name}
+                        onChange={(e) => setName(e.target.value)}
                         placeholder="Ada Lovelace"
                         className="w-full bg-transparent text-sm text-white outline-none placeholder:text-slate-600"
                       />
@@ -156,9 +172,9 @@ export function AuthPage() {
                   </div>
                 </label>
 
-                {error && (
+                {(error || oauthErrorMessage) && (
                   <div className="rounded-2xl border border-rose-500/30 bg-rose-950/30 px-4 py-3 text-sm text-rose-200">
-                    {error}
+                    {error || oauthErrorMessage}
                   </div>
                 )}
 
@@ -168,6 +184,23 @@ export function AuthPage() {
                   className="w-full rounded-2xl bg-cyan-400 px-4 py-3 text-sm font-bold text-slate-950 transition hover:bg-cyan-300 disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   {loading ? "Submitting..." : isSignup ? "Create account" : "Sign in"}
+                </button>
+
+                <div className="flex items-center gap-3 py-1">
+                  <div className="h-px flex-1 bg-slate-800" />
+                  <span className="text-xs font-semibold uppercase tracking-[0.25em] text-slate-600">Or</span>
+                  <div className="h-px flex-1 bg-slate-800" />
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleGoogleSignIn}
+                  className="flex w-full items-center justify-center gap-3 rounded-2xl border border-slate-800 bg-slate-900/80 px-4 py-3 text-sm font-semibold text-slate-100 transition hover:border-slate-700 hover:bg-slate-900"
+                >
+                  <span className="flex h-5 w-5 items-center justify-center rounded-full bg-white text-[11px] font-bold text-slate-950">
+                    G
+                  </span>
+                  Continue with Google
                 </button>
               </form>
 

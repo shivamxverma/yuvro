@@ -5,6 +5,7 @@ import { AuthProvider, useAuth } from "./auth/AuthContext";
 import { AuthPage } from './components/authPage';
 import { LandingPage } from './components/landing';
 import { CodingPage } from './components/codingPage';
+import { OAuthSuccessPage } from './components/oauthSuccess';
 
 function HomeRoute() {
   const { user, loading } = useAuth();
@@ -33,6 +34,7 @@ function App() {
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<HomeRoute />} />
+          <Route path="/oauth-success" element={<OAuthSuccessPage />} />
           <Route
             path="/coding"
             element={

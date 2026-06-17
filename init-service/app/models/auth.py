@@ -19,6 +19,10 @@ class User(Base):
         back_populates="user",
         cascade="all, delete-orphan",
     )
+    sessions: Mapped[list["Session"]] = relationship(
+        back_populates="user",
+        cascade="all, delete-orphan",
+    )
     workspaces: Mapped[list["Workspace"]] = relationship(
         back_populates="owner",
         cascade="all, delete-orphan",
@@ -44,6 +48,32 @@ class AuthMethod(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
     user: Mapped["User"] = relationship(back_populates="auth_methods")
+
+
+class Session(Base):
+    __tablename__ = "sessions"
+    __table_args__ = (
+        Index("idx_sessions_user_status", "user_id", "status"),
+        Index("idx_sessions_expires_at", "expires_at"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    user_id: Mapped[str] = mapped_column(
+        String(36),
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    refresh_token_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    status: Mapped[str] = mapped_column(String(20), nullable=False, default="ACTIVE")
+    user_agent: Mapped[str | None] = mapped_column(Text, nullable=True)
+    ip_address: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    last_used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+    user: Mapped["User"] = relationship(back_populates="sessions")
 
 
 from app.models.project import Workspace  # noqa: E402

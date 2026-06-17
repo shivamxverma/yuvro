@@ -19,7 +19,7 @@ type AuthContextValue = {
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string, name?: string) => Promise<void>;
   signOut: () => Promise<void>;
-  refreshUser: () => Promise<void>;
+  refreshUser: () => Promise<AuthUser | null>;
 };
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -36,23 +36,44 @@ async function parseJson<T>(response: Response): Promise<T> {
   return payload as T;
 }
 
+async function fetchMe(): Promise<AuthUser | null> {
+  const response = await fetch(`${INIT_SERVICE_URL}/auth/me`, {
+    credentials: "include",
+  });
+  if (response.status === 401) {
+    return null;
+  }
+  const payload = await parseJson<{ user: AuthUser }>(response);
+  return payload.user;
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const refreshUser = async () => {
+  const refreshUser = async (): Promise<AuthUser | null> => {
     try {
-      const response = await fetch(`${INIT_SERVICE_URL}/auth/me`, {
+      const user = await fetchMe();
+      if (user) {
+        setUser(user);
+        return user;
+      }
+
+      const refreshResponse = await fetch(`${INIT_SERVICE_URL}/auth/refresh`, {
+        method: "POST",
         credentials: "include",
       });
-      if (response.status === 401) {
+      if (!refreshResponse.ok) {
         setUser(null);
-        return;
+        return null;
       }
-      const payload = await parseJson<{ user: AuthUser }>(response);
-      setUser(payload.user);
+
+      const refreshedUser = await fetchMe();
+      setUser(refreshedUser);
+      return refreshedUser;
     } catch {
       setUser(null);
+      return null;
     }
   };
 

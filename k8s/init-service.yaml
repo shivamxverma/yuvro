@@ -27,8 +27,10 @@ spec:
           env:
             - name: PORT
               value: "3001"
-            - name: CLIENT_ORIGIN
+            - name: CLIENT_ORIGINS
               value: "http://localhost:5173"
+            - name: PUBLIC_BASE_URL
+              value: "http://init-service.127.0.0.1.nip.io:8080"
             - name: DATABASE_URL
               value: "postgresql+psycopg2://postgres:postgres@postgres:5432/yuvro"
             - name: WORKSPACES_DIR
@@ -66,6 +68,24 @@ spec:
                 secretKeyRef:
                   name: yuvro-app-secrets
                   key: ADMIN_API_TOKEN
+                  optional: true
+            - name: AUTH_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: yuvro-app-secrets
+                  key: AUTH_SECRET_KEY
+                  optional: true
+            - name: GOOGLE_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: yuvro-app-secrets
+                  key: GOOGLE_CLIENT_ID
+                  optional: true
+            - name: GOOGLE_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: yuvro-app-secrets
+                  key: GOOGLE_CLIENT_SECRET
                   optional: true
           volumeMounts:
             - name: workspace-root
