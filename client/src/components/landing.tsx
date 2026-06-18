@@ -3,22 +3,16 @@ import { useNavigate } from 'react-router-dom';
 import {
   AlertCircle,
   ArrowRight,
-  Code,
+  Clock3,
   FolderKanban,
+  GitBranch,
   HelpCircle,
-  LogOut,
-  Plus,
+  Layers3,
   Shuffle,
   Sparkles,
 } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext';
 import { INIT_SERVICE_URL } from '../lib/api';
-
-const Github = ({ className }: { className?: string }) => (
-  <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor" className={className}>
-    <path d="M12 0C5.374 0 0 5.373 0 12c0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23A11.509 11.509 0 0 1 12 5.803c1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576C20.566 21.797 24 17.3 24 12c0-6.627-5.373-12-12-12z" />
-  </svg>
-);
 
 const SLUG_WORDS = ['car', 'dog', 'computer', 'person', 'inside', 'word', 'for', 'please', 'to', 'cool', 'open', 'source'];
 
@@ -87,13 +81,18 @@ const ReactIcon = ({ className }: { className?: string }) => (
 );
 
 const LANGUAGES = [
-  { value: 'python', label: 'Python', icon: <PythonIcon className="w-full h-full" />, desc: 'Standard Python 3 backend environment' },
-  { value: 'fastapi', label: 'FastAPI', icon: <FastApiIcon className="w-full h-full" />, desc: 'High-performance Python web APIs' },
-  { value: 'django', label: 'Django', icon: <DjangoIcon className="w-full h-full" />, desc: 'The web framework for perfectionists' },
-  { value: 'flask', label: 'Flask', icon: <FlaskIcon className="w-full h-full" />, desc: 'Lightweight WSGI web application framework' },
-  { value: 'react', label: 'React', icon: <ReactIcon className="w-full h-full" />, desc: 'Vite-powered React frontend workspace' },
-  { value: 'cpp', label: 'C++', icon: <CppIcon className="w-full h-full" />, desc: 'Native C++ workspace with g++ compile-and-run' },
+  { value: 'python', label: 'Python', icon: <PythonIcon className="h-full w-full" />, desc: 'General backend runtime' },
+  { value: 'fastapi', label: 'FastAPI', icon: <FastApiIcon className="h-full w-full" />, desc: 'High-speed Python APIs' },
+  { value: 'django', label: 'Django', icon: <DjangoIcon className="h-full w-full" />, desc: 'Full web framework stack' },
+  { value: 'flask', label: 'Flask', icon: <FlaskIcon className="h-full w-full" />, desc: 'Lightweight Python app' },
+  { value: 'react', label: 'React', icon: <ReactIcon className="h-full w-full" />, desc: 'Vite frontend workspace' },
+  { value: 'cpp', label: 'C++', icon: <CppIcon className="h-full w-full" />, desc: 'Native compile-and-run' },
 ];
+
+const HANDY_LINKS = ['Workspace guide', 'How to launch', 'Import from GitHub', 'Project templates', 'Status'];
+const COMPANY_LINKS = ['About', 'Brand', 'Careers', 'Education', 'Startups'];
+const LEGAL_LINKS = ['Terms', 'Commercial agreement', 'Privacy', 'DPA', 'Report abuse'];
+const CONNECT_LINKS = ['X / Twitter', 'TikTok', 'Instagram', 'LinkedIn'];
 
 type ProjectSummary = {
   id: string;
@@ -126,6 +125,25 @@ type ProjectBootstrapResponse = {
 
 type WorkspaceTargetMode = 'new' | 'existing';
 
+function formatWorkspaceDate(dateString: string) {
+  const date = new Date(dateString);
+  if (Number.isNaN(date.getTime())) {
+    return 'Recently';
+  }
+  return new Intl.DateTimeFormat('en', {
+    month: 'short',
+    day: 'numeric',
+  }).format(date);
+}
+
+function formatWorkspaceCount(count: number) {
+  return `${count} project${count === 1 ? '' : 's'}`;
+}
+
+const PanelLabel = ({ children }: { children: React.ReactNode }) => (
+  <div className="mb-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-[#8f867d]">{children}</div>
+);
+
 const WorkspaceModeToggle = ({
   mode,
   setMode,
@@ -142,34 +160,27 @@ const WorkspaceModeToggle = ({
   }
 
   return (
-    <div>
-      <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Target</label>
-      <div className="grid grid-cols-2 gap-2 rounded-xl border border-slate-800 bg-slate-950/60 p-1.5">
-        <button
-          type="button"
-          onClick={() => setMode('existing')}
-          disabled={disabled}
-          className={`rounded-lg px-3 py-2 text-xs font-semibold transition ${
-            mode === 'existing'
-              ? 'bg-indigo-600 text-white'
-              : 'text-slate-400 hover:bg-slate-900/60 hover:text-slate-200'
-          }`}
-        >
-          Existing Workspace
-        </button>
-        <button
-          type="button"
-          onClick={() => setMode('new')}
-          disabled={disabled}
-          className={`rounded-lg px-3 py-2 text-xs font-semibold transition ${
-            mode === 'new'
-              ? 'bg-indigo-600 text-white'
-              : 'text-slate-400 hover:bg-slate-900/60 hover:text-slate-200'
-          }`}
-        >
-          New Workspace
-        </button>
-      </div>
+    <div className="inline-flex rounded-full border border-[#dfd6ce] bg-white p-1">
+      <button
+        type="button"
+        onClick={() => setMode('existing')}
+        disabled={disabled}
+        className={`rounded-full px-4 py-2 text-xs font-semibold transition ${
+          mode === 'existing' ? 'bg-[#ff5a1f] text-white' : 'text-[#6c635b] hover:text-[#2f2f34]'
+        }`}
+      >
+        Existing workspace
+      </button>
+      <button
+        type="button"
+        onClick={() => setMode('new')}
+        disabled={disabled}
+        className={`rounded-full px-4 py-2 text-xs font-semibold transition ${
+          mode === 'new' ? 'bg-[#ff5a1f] text-white' : 'text-[#6c635b] hover:text-[#2f2f34]'
+        }`}
+      >
+        New workspace
+      </button>
     </div>
   );
 };
@@ -195,6 +206,8 @@ export const LandingPage = () => {
   const [rollAnimation, setRollAnimation] = useState(false);
 
   const selectedWorkspace = workspaces.find(workspace => workspace.id === selectedWorkspaceId) ?? null;
+  const selectedWorkspaceProjects = selectedWorkspace?.projects ?? [];
+  const totalProjects = workspaces.reduce((count, workspace) => count + workspace.projects.length, 0);
 
   const fetchWorkspaces = async () => {
     setLoadingWorkspaces(true);
@@ -248,7 +261,7 @@ export const LandingPage = () => {
 
   const triggerShuffle = (target: 'create' | 'clone') => {
     setRollAnimation(true);
-    window.setTimeout(() => setRollAnimation(false), 600);
+    window.setTimeout(() => setRollAnimation(false), 500);
     if (target === 'create') {
       setProjectName(getRandomSlug());
       return;
@@ -308,8 +321,8 @@ export const LandingPage = () => {
     };
   };
 
-  const handleCreateProject = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleCreateProject = async (event: React.FormEvent) => {
+    event.preventDefault();
     setError('');
 
     if (!projectName.trim()) {
@@ -347,8 +360,8 @@ export const LandingPage = () => {
     }
   };
 
-  const handleCloneProject = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleCloneProject = async (event: React.FormEvent) => {
+    event.preventDefault();
     setError('');
 
     if (!githubUrl.trim()) {
@@ -399,425 +412,527 @@ export const LandingPage = () => {
   };
 
   return (
-    <div className="relative min-h-screen w-full bg-[#030712] bg-grid-pattern px-4 py-12 text-slate-100">
-      <div className="absolute left-[-10%] top-[-15%] h-[50%] w-[50%] rounded-full bg-indigo-900/20 blur-[120px] pointer-events-none mesh-bg-animated" />
-      <div className="absolute bottom-[-15%] right-[-10%] h-[50%] w-[50%] rounded-full bg-blue-900/15 blur-[120px] pointer-events-none mesh-bg-animated" />
-
-      <div className="relative z-10 mx-auto flex w-full max-w-6xl flex-col gap-6">
-        <div className="flex flex-col gap-4 rounded-3xl border border-slate-800/80 bg-slate-950/55 p-6 backdrop-blur-xl md:flex-row md:items-center md:justify-between">
-          <div>
-            <div className="mb-4 inline-flex items-center gap-3 rounded-full border border-indigo-500/20 bg-indigo-950/40 px-3 py-2 shadow-lg shadow-indigo-950/20">
-              <Sparkles className="h-4 w-4 animate-pulse text-indigo-400" aria-hidden="true" />
-              <span className="text-xs font-semibold uppercase tracking-wider text-indigo-300">Cloud Code Sandbox</span>
-            </div>
+    <div className="min-h-screen bg-[#f3efeb] text-[#2f2f34]">
+      <div className="mx-auto max-w-[1440px] px-5 pb-16 pt-6 sm:px-8 lg:px-10">
+        <header className="flex flex-wrap items-center justify-between gap-4 rounded-full border border-[#e5ddd6] bg-[#f7f3ef] px-5 py-4">
+          <div className="flex items-center gap-8">
             <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-tr from-indigo-600 to-blue-500 text-xl font-extrabold text-white shadow-lg shadow-indigo-500/30">
-                Y
+              <div className="grid h-10 w-10 grid-cols-2 gap-1 rounded-xl bg-transparent p-1">
+                <span className="rounded-sm bg-[#ff5a1f]" />
+                <span className="rounded-sm bg-transparent" />
+                <span className="rounded-sm bg-[#ff5a1f]" />
+                <span className="rounded-sm bg-[#ff5a1f]" />
               </div>
-              <h1 className="m-0 text-3xl font-extrabold tracking-tight text-white">Yuvro</h1>
+              <span className="text-[2rem] font-black tracking-[-0.06em]">Yuvro</span>
             </div>
-            <p className="mt-2 max-w-xl text-sm text-slate-400">
-              Manage multiple projects inside a workspace, then launch any project into its own isolated coding runtime.
-            </p>
           </div>
 
-          <div className="flex items-center gap-3 self-start rounded-full border border-slate-800 bg-slate-950/70 px-4 py-2 text-xs text-slate-300 md:self-center">
-            <span className="max-w-[220px] truncate">{user?.name || user?.email}</span>
+          <div className="flex items-center gap-3">
+            <span className="inline-flex items-center gap-2 rounded-full bg-[#ff5a1f] px-3 py-1 text-sm font-semibold text-white">
+              Launch
+              <span className="rounded-full bg-white/20 px-2 py-0.5 text-xs">{workspaces.length + 1}</span>
+            </span>
+            <div className="hidden text-sm text-[#5e5751] sm:block">{user?.name || user?.email}</div>
             <button
               type="button"
               onClick={() => {
                 void signOut();
               }}
-              className="inline-flex items-center gap-1 text-slate-400 transition hover:text-white"
+              className="rounded-full px-4 py-2 text-sm font-medium text-[#3e3934] transition hover:bg-[#ebe3dc]"
             >
-              <LogOut className="h-3.5 w-3.5" />
-              <span>Sign out</span>
+              Log out
+            </button>
+            <button
+              type="button"
+              className="rounded-full border border-[#ff5a1f] px-5 py-2 text-sm font-semibold text-[#ff5a1f]"
+            >
+              Active session
             </button>
           </div>
-        </div>
+        </header>
 
-        <div className="grid gap-6 lg:grid-cols-[1.15fr_0.95fr] lg:items-start">
-          <section className="glass-card flex min-h-0 flex-col rounded-3xl p-6 lg:max-h-[calc(100vh-14rem)]">
-            <div className="mb-5 flex items-center justify-between gap-3">
-              <div>
-                <div className="flex items-center gap-2">
-                  <FolderKanban className="h-4 w-4 text-indigo-300" />
-                  <h2 className="text-sm font-bold uppercase tracking-[0.2em] text-slate-300">Your Workspaces</h2>
-                </div>
-                <p className="mt-2 text-xs text-slate-500">Select a workspace to add another project or reopen an existing one.</p>
+        <section className="pt-10 text-center sm:pt-14">
+          <div className="mx-auto max-w-4xl">
+            <h1 style={{ color: '#000000' }} className="m-0 text-[3rem] font-black tracking-[-0.08em] sm:text-[5.5rem]">
+              What will you build Today
+            </h1>
+            <p className="mt-4 text-lg text-[#6a635d]">
+              Launch a fresh environment, import a repository, or reopen an existing workspace.
+            </p>
+          </div>
+
+          <div className="mx-auto mt-8 max-w-3xl rounded-[2rem] border border-[#f4b49b] bg-[#f7f3ef] p-4 shadow-[0_20px_60px_rgba(105,88,74,0.08)]">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="inline-flex rounded-full border border-[#e3d9d0] bg-white p-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setTab('create');
+                    setError('');
+                  }}
+                  className={`rounded-full px-4 py-2 text-sm font-semibold transition ${
+                    tab === 'create' ? 'bg-[#ff5a1f] text-white' : 'text-[#6c635b]'
+                  }`}
+                >
+                  New Project
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setTab('clone');
+                    setError('');
+                  }}
+                  className={`rounded-full px-4 py-2 text-sm font-semibold transition ${
+                    tab === 'clone' ? 'bg-[#ff5a1f] text-white' : 'text-[#6c635b]'
+                  }`}
+                >
+                  Clone from GitHub
+                </button>
               </div>
+
+              <div className="rounded-full bg-[#efe8e2] px-3 py-2 text-xs font-semibold text-[#7b7269]">
+                {selectedWorkspace ? `${selectedWorkspace.name} targeted` : 'Auto-create workspace'}
+              </div>
+            </div>
+
+            {error ? (
+              <div className="mt-4 flex items-start gap-2 rounded-2xl border border-[#f6b8a7] bg-[#fff1eb] px-4 py-3 text-left text-sm text-[#b43a1a]">
+                <AlertCircle className="mt-0.5 h-4 w-4 flex-shrink-0" />
+                <span>{error}</span>
+              </div>
+            ) : null}
+
+            <div className="mt-4 text-left">
+              {tab === 'create' ? (
+                <form onSubmit={handleCreateProject} className="space-y-4">
+                  <WorkspaceModeToggle
+                    mode={createMode}
+                    setMode={setCreateMode}
+                    disabled={loading}
+                    hasWorkspaces={workspaces.length > 0}
+                  />
+
+                  <div className="rounded-[1.75rem] border border-[#eadfd6] bg-white p-5">
+                    <div className="grid gap-4 md:grid-cols-[1fr_auto]">
+                      <div>
+                        <PanelLabel>Workspace Name</PanelLabel>
+                        {createMode === 'existing' ? (
+                          <div className="rounded-2xl border border-[#ece3db] bg-[#f7f3ef] px-4 py-3 text-sm font-medium text-[#3b3531]">
+                            {selectedWorkspace ? selectedWorkspace.name : 'Choose a workspace below'}
+                          </div>
+                        ) : (
+                          <input
+                            value={workspaceName}
+                            onChange={e => setWorkspaceName(e.target.value)}
+                            placeholder="My Workspace"
+                            disabled={loading}
+                            className="w-full rounded-2xl border border-[#ece3db] bg-[#f8f5f1] px-4 py-3 text-sm text-[#2f2f34] outline-none transition focus:border-[#ff5a1f]"
+                          />
+                        )}
+                      </div>
+
+                      <div className="min-w-[12rem]">
+                        <PanelLabel>Template</PanelLabel>
+                        <div className="rounded-2xl border border-[#ece3db] bg-[#f8f5f1] px-4 py-3 text-sm font-medium text-[#3b3531]">
+                          Blank runtime
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="mt-4">
+                      <PanelLabel>Project Name</PanelLabel>
+                      <div className="relative">
+                        <input
+                          value={projectName}
+                          onChange={e => setProjectName(e.target.value)}
+                          placeholder="python-api"
+                          disabled={loading}
+                          className="w-full rounded-2xl border border-[#ece3db] bg-[#f8f5f1] px-4 py-4 pr-24 font-mono text-base text-[#2f2f34] outline-none transition focus:border-[#ff5a1f]"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => triggerShuffle('create')}
+                          disabled={loading}
+                          className="absolute right-3 top-1/2 inline-flex -translate-y-1/2 items-center gap-1 rounded-full bg-[#fce5dc] px-3 py-2 text-xs font-semibold text-[#ff5a1f]"
+                        >
+                          <Shuffle className={`h-3.5 w-3.5 ${rollAnimation ? 'animate-dice' : ''}`} />
+                          Random
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="mt-5 grid gap-3 sm:grid-cols-3">
+                      {LANGUAGES.map(lang => {
+                        const selected = language === lang.value;
+                        return (
+                          <button
+                            key={lang.value}
+                            type="button"
+                            onClick={() => setLanguage(lang.value)}
+                            className={`rounded-[1.5rem] border p-4 text-left transition ${
+                              selected
+                                ? 'border-[#ff5a1f] bg-[#fff1eb]'
+                                : 'border-[#ece3db] bg-[#faf7f4] hover:bg-white'
+                            }`}
+                          >
+                            <div className="flex items-center gap-3">
+                              <div className="h-10 w-10 overflow-hidden rounded-xl border border-[#e6ddd5] bg-white p-1.5">
+                                {lang.icon}
+                              </div>
+                              <div>
+                                <div className="text-sm font-semibold text-[#2f2f34]">{lang.label}</div>
+                                <div className="mt-1 text-xs text-[#7b7269]">{lang.desc}</div>
+                              </div>
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div className="text-sm text-[#7b7269]">Pick a stack and Yuvro will create the runtime automatically.</div>
+                    <button
+                      type="submit"
+                      disabled={loading}
+                      className="inline-flex items-center gap-2 rounded-full bg-[#ff5a1f] px-5 py-3 text-sm font-semibold text-white transition hover:brightness-105 disabled:opacity-70"
+                    >
+                      {loading ? 'Creating workspace…' : createMode === 'existing' ? 'Add project' : 'Create workspace'}
+                      <ArrowRight className="h-4 w-4" />
+                    </button>
+                  </div>
+                </form>
+              ) : (
+                <form onSubmit={handleCloneProject} className="space-y-4">
+                  <WorkspaceModeToggle
+                    mode={cloneMode}
+                    setMode={setCloneMode}
+                    disabled={loading}
+                    hasWorkspaces={workspaces.length > 0}
+                  />
+
+                  <div className="rounded-[1.75rem] border border-[#eadfd6] bg-white p-5">
+                    <div>
+                      <PanelLabel>GitHub Repository</PanelLabel>
+                      <input
+                        value={githubUrl}
+                        onChange={e => setGithubUrl(e.target.value)}
+                        placeholder="https://github.com/username/repository"
+                        disabled={loading}
+                        className="w-full rounded-2xl border border-[#ece3db] bg-[#f8f5f1] px-4 py-4 text-base text-[#2f2f34] outline-none transition focus:border-[#ff5a1f]"
+                      />
+                      <div className="mt-2 flex items-center gap-1 text-xs text-[#7b7269]">
+                        <HelpCircle className="h-3.5 w-3.5" />
+                        Supports public repositories only
+                      </div>
+                    </div>
+
+                    <div className="mt-4 grid gap-4 md:grid-cols-2">
+                      <div>
+                        <PanelLabel>Workspace Name</PanelLabel>
+                        {cloneMode === 'existing' ? (
+                          <div className="rounded-2xl border border-[#ece3db] bg-[#f7f3ef] px-4 py-3 text-sm font-medium text-[#3b3531]">
+                            {selectedWorkspace ? selectedWorkspace.name : 'Choose a workspace below'}
+                          </div>
+                        ) : (
+                          <input
+                            value={cloneWorkspaceName}
+                            onChange={e => setCloneWorkspaceName(e.target.value)}
+                            placeholder="Imported Workspace"
+                            disabled={loading}
+                            className="w-full rounded-2xl border border-[#ece3db] bg-[#f8f5f1] px-4 py-3 text-sm text-[#2f2f34] outline-none transition focus:border-[#ff5a1f]"
+                          />
+                        )}
+                      </div>
+
+                      <div>
+                        <PanelLabel>Project Name</PanelLabel>
+                        <div className="relative">
+                          <input
+                            value={cloneProjectName}
+                            onChange={e => setCloneProjectName(e.target.value)}
+                            placeholder="github-import"
+                            disabled={loading}
+                            className="w-full rounded-2xl border border-[#ece3db] bg-[#f8f5f1] px-4 py-3 pr-24 font-mono text-sm text-[#2f2f34] outline-none transition focus:border-[#ff5a1f]"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => triggerShuffle('clone')}
+                            disabled={loading}
+                            className="absolute right-3 top-1/2 inline-flex -translate-y-1/2 items-center gap-1 rounded-full bg-[#fce5dc] px-3 py-1.5 text-xs font-semibold text-[#ff5a1f]"
+                          >
+                            <Shuffle className={`h-3.5 w-3.5 ${rollAnimation ? 'animate-dice' : ''}`} />
+                            Random
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div className="inline-flex items-center gap-2 rounded-full bg-[#ebe4de] px-4 py-2 text-sm text-[#655d56]">
+                      <GitBranch className="h-4 w-4 text-[#ff5a1f]" />
+                      Clone and launch inside its own workspace runtime
+                    </div>
+                    <button
+                      type="submit"
+                      disabled={loading}
+                      className="inline-flex items-center gap-2 rounded-full bg-[#ff5a1f] px-5 py-3 text-sm font-semibold text-white transition hover:brightness-105 disabled:opacity-70"
+                    >
+                      {loading ? 'Cloning repository…' : cloneMode === 'existing' ? 'Clone into workspace' : 'Clone and launch'}
+                      <ArrowRight className="h-4 w-4" />
+                    </button>
+                  </div>
+                </form>
+              )}
+            </div>
+          </div>
+
+          <div className="mx-auto mt-6 flex max-w-3xl flex-wrap items-center justify-center gap-3">
+            {LANGUAGES.map(lang => (
+              <button
+                key={lang.value}
+                type="button"
+                onClick={() => {
+                  setTab('create');
+                  setLanguage(lang.value);
+                }}
+                className="rounded-full border border-[#ddd5cd] bg-[#f7f3ef] px-4 py-2 text-sm font-medium text-[#5f5750] transition hover:border-[#ff5a1f] hover:text-[#ff5a1f]"
+              >
+                {lang.label}
+              </button>
+            ))}
+          </div>
+        </section>
+
+        <section className="mt-16 grid gap-6 lg:grid-cols-[1.25fr_0.9fr]">
+          <article className="overflow-hidden rounded-[3rem] bg-[#f5a98d] p-8 text-left sm:p-10">
+            <div className="text-sm text-[#7e4330]">Workspace Studio</div>
+            <div className="mt-2 max-w-md text-[3.2rem] font-black leading-[0.95] tracking-[-0.08em] text-[#2f2f34] sm:text-[4.5rem]">
+              Design your workflow freely
+            </div>
+            <p className="mt-6 max-w-sm text-base leading-7 text-[#6a4a3e]">
+              Create blank environments, import repos, and keep related projects together so you can move through ideas without context switching.
+            </p>
+            <div className="mt-8 rounded-[2rem] border border-[#b36d56] bg-[#f6b39b]/40 p-5">
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="rounded-2xl border border-[#b36d56] bg-[#f9c2af]/60 p-4">
+                  <div className="text-sm font-semibold text-[#2f2f34]">Selected Workspace</div>
+                  <div className="mt-2 text-2xl font-black tracking-[-0.05em] text-[#2f2f34]">
+                    {selectedWorkspace?.name ?? 'Autocreate'}
+                  </div>
+                </div>
+                <div className="rounded-2xl border border-[#b36d56] bg-[#f9c2af]/60 p-4">
+                  <div className="text-sm font-semibold text-[#2f2f34]">Projects Ready</div>
+                  <div className="mt-2 text-2xl font-black tracking-[-0.05em] text-[#2f2f34]">{totalProjects}</div>
+                </div>
+              </div>
+            </div>
+          </article>
+
+          <article className="rounded-[2.5rem] bg-[#dcd5cf] p-8 sm:p-10">
+            <div className="text-sm text-[#726a63]">Parallel Workspaces</div>
+            <div className="mt-3 text-[3.1rem] font-black leading-none tracking-[-0.08em] text-[#2f2f34] sm:text-[4.2rem]">
+              Move faster
+            </div>
+            <p className="mt-5 text-base leading-7 text-[#5f5851]">
+              Keep templates, imports, and active projects visible at the same time. Handle workspace targeting, launch, and reopening from one place.
+            </p>
+            <div className="mt-8 flex items-center gap-3 rounded-2xl bg-[#f2ede8] px-4 py-4">
+              <Sparkles className="h-5 w-5 text-[#ff5a1f]" />
+              <span className="text-sm font-medium text-[#4e4842]">
+                {selectedWorkspace ? `${selectedWorkspace.name} is ready for the next launch.` : 'Your next workspace will be created automatically.'}
+              </span>
+            </div>
+          </article>
+        </section>
+
+        <section className="mt-16 grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
+          <div className="rounded-[2.5rem] bg-[#2f2b2c] p-8 text-white sm:p-10">
+            <div className="flex items-center gap-2 text-sm text-white/60">
+              <Layers3 className="h-4 w-4" />
+              Workspace Directory
+            </div>
+            <div className="mt-4 text-[3.1rem] font-black leading-none tracking-[-0.08em] text-white sm:text-[4.2rem]">
+              Ship anything
+            </div>
+            <p className="mt-5 max-w-lg text-base leading-7 text-white/70">
+              Reopen any project in a selected workspace, keep related code together, and add new runtimes without rebuilding your context from scratch.
+            </p>
+
+            <div className="mt-8 space-y-4">
+              {loadingWorkspaces ? (
+                <div className="rounded-[2rem] border border-white/10 bg-white/5 px-5 py-6 text-sm text-white/70">
+                  Loading workspaces…
+                </div>
+              ) : workspaces.length === 0 ? (
+                <div className="rounded-[2rem] border border-white/10 bg-white/5 px-5 py-6 text-sm leading-7 text-white/70">
+                  No workspaces yet. Create the first one from the launch panel above and Yuvro will add it here.
+                </div>
+              ) : (
+                workspaces.map(workspace => {
+                  const selected = workspace.id === selectedWorkspaceId;
+                  return (
+                    <div
+                      key={workspace.id}
+                      className={`rounded-[1.8rem] border px-5 py-5 transition ${
+                        selected ? 'border-[#ff8a62] bg-[#3b3536]' : 'border-white/10 bg-white/[0.04]'
+                      }`}
+                    >
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedWorkspaceId(workspace.id);
+                          setCreateMode('existing');
+                          setCloneMode('existing');
+                          setError('');
+                        }}
+                        className="w-full text-left"
+                      >
+                        <div className="flex flex-wrap items-center justify-between gap-3">
+                          <div>
+                            <div className="text-xl font-semibold text-white">{workspace.name}</div>
+                            <div className="mt-1 text-sm text-white/55">
+                              {formatWorkspaceCount(workspace.projects.length)} · Updated {formatWorkspaceDate(workspace.updatedAt)}
+                            </div>
+                          </div>
+                          {selected ? (
+                            <span className="rounded-full bg-[#ff5a1f] px-3 py-1 text-xs font-semibold text-white">Active</span>
+                          ) : null}
+                        </div>
+                      </button>
+
+                      <div className="mt-4 flex flex-wrap gap-2">
+                        {workspace.projects.length > 0 ? (
+                          workspace.projects.map(project => (
+                            <button
+                              key={project.id}
+                              type="button"
+                              onClick={() => openProject(workspace.id, project.id)}
+                              className="rounded-full border border-white/10 bg-black/20 px-3 py-2 text-xs font-medium text-white/85 transition hover:border-white/20"
+                            >
+                              {project.name}
+                            </button>
+                          ))
+                        ) : (
+                          <div className="text-sm text-white/50">No projects yet</div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </div>
+
+          <div className="rounded-[3rem] bg-[#ff7447] p-8 sm:p-10">
+            <div className="text-sm text-[#7a371f]">Support for Teams</div>
+            <div className="mt-3 text-[3.2rem] font-black leading-none tracking-[-0.08em] text-[#2f2f34] sm:text-[4.6rem]">
+              Build together
+            </div>
+            <p className="mt-5 max-w-xl text-base leading-7 text-[#693928]">
+              Your team can plan the app while Yuvro handles workspace targeting, project creation, and GitHub imports in the right order.
+            </p>
+
+            <div className="mt-8 grid gap-4 sm:grid-cols-2">
+              <div className="rounded-[2rem] bg-[#f6d1c5] p-5 text-[#2f2f34]">
+                <div className="flex items-center gap-2 text-sm font-semibold">
+                  <FolderKanban className="h-4 w-4" />
+                  Selected workspace
+                </div>
+                <div className="mt-4 text-2xl font-black tracking-[-0.05em]">
+                  {selectedWorkspace?.name ?? 'Autocreate'}
+                </div>
+                <div className="mt-2 text-sm text-[#5d4a41]">
+                  {selectedWorkspace ? formatWorkspaceCount(selectedWorkspaceProjects.length) : 'First workspace created automatically'}
+                </div>
+              </div>
+
+              <div className="rounded-[2rem] bg-[#f6d1c5] p-5 text-[#2f2f34]">
+                <div className="flex items-center gap-2 text-sm font-semibold">
+                  <Clock3 className="h-4 w-4" />
+                  Status
+                </div>
+                <div className="mt-4 text-2xl font-black tracking-[-0.05em]">{loading ? 'Working…' : 'Ready'}</div>
+                <div className="mt-2 text-sm text-[#5d4a41]">
+                  Launch a template or import a repo from the studio above.
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-8 flex flex-wrap items-center gap-4">
+              <button
+                type="button"
+                onClick={() => {
+                  setTab('create');
+                  setError('');
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                }}
+                className="rounded-full border border-[#d24f29] bg-[#fff2ec] px-5 py-3 text-sm font-semibold text-[#ff5a1f]"
+              >
+                Deep dive into studio
+              </button>
               <button
                 type="button"
                 onClick={() => {
                   setError('');
                   void fetchWorkspaces();
                 }}
-                disabled={loadingWorkspaces}
-                className="rounded-lg border border-slate-800 bg-slate-950/70 px-3 py-2 text-[11px] font-semibold text-slate-300 transition hover:border-indigo-500/40 hover:text-white"
+                className="text-sm font-semibold text-[#2f2f34] underline underline-offset-4"
               >
-                Refresh
+                Refresh the directory
               </button>
             </div>
+          </div>
+        </section>
 
-            <div className="min-h-0 flex-1 overflow-y-auto pr-1">
-              {loadingWorkspaces ? (
-                <div className="flex min-h-[220px] items-center justify-center rounded-2xl border border-slate-800/80 bg-slate-950/50 text-sm text-slate-400">
-                  <div className="flex items-center gap-3">
-                    <div className="h-4 w-4 rounded-full border-2 border-white/20 border-t-white animate-spin" />
-                    <span>Loading workspaces…</span>
+        <footer className="mt-20 grid gap-10 border-t border-[#e1d9d2] pt-12 lg:grid-cols-2">
+          <div className="grid gap-10 sm:grid-cols-2">
+            <div>
+              <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#8f867d]">Handy Links</div>
+              <div className="mt-4 space-y-2">
+                {HANDY_LINKS.map(item => (
+                  <div key={item} className="text-[1.05rem] text-[#5d5650]">
+                    {item}
                   </div>
-                </div>
-              ) : workspaces.length === 0 ? (
-                <div className="rounded-2xl border border-dashed border-slate-800 bg-slate-950/40 p-6 text-sm text-slate-400">
-                  No workspaces yet. Create the first project on the right and Yuvro will create the workspace automatically.
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {workspaces.map(workspace => {
-                    const isSelected = workspace.id === selectedWorkspaceId;
-                    return (
-                      <div
-                        key={workspace.id}
-                        className={`rounded-2xl border p-4 transition ${
-                          isSelected
-                            ? 'border-indigo-500/70 bg-indigo-950/20 shadow-lg shadow-indigo-950/10'
-                            : 'border-slate-800 bg-slate-950/40'
-                        }`}
-                      >
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setSelectedWorkspaceId(workspace.id);
-                            setCreateMode('existing');
-                            setCloneMode('existing');
-                            setError('');
-                          }}
-                          className="w-full text-left"
-                        >
-                          <div className="flex items-start justify-between gap-3">
-                            <div>
-                              <div className="text-sm font-semibold text-white">{workspace.name}</div>
-                              <div className="mt-1 text-[11px] text-slate-500">{workspace.projects.length} project{workspace.projects.length === 1 ? '' : 's'}</div>
-                            </div>
-                            {isSelected ? (
-                              <span className="rounded-full border border-indigo-500/30 bg-indigo-500/15 px-2 py-1 text-[10px] font-bold uppercase tracking-widest text-indigo-200">
-                                Selected
-                              </span>
-                            ) : null}
-                          </div>
-                        </button>
-
-                        <div className="mt-4 flex flex-wrap gap-2">
-                          {workspace.projects.map(project => (
-                            <button
-                              key={project.id}
-                              type="button"
-                              onClick={() => openProject(workspace.id, project.id)}
-                              className="rounded-full border border-slate-700 bg-slate-900/70 px-3 py-1.5 text-[11px] font-medium text-slate-200 transition hover:border-indigo-500/40 hover:text-white"
-                            >
-                              {project.name}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          </section>
-
-          <section className="glass-card rounded-3xl p-6 md:p-8">
-            <div className="mb-6 flex bg-slate-950/60 p-1.5 rounded-xl border border-slate-800/80" role="tablist" aria-label="Project Actions">
-              <button
-                role="tab"
-                aria-selected={tab === 'create'}
-                aria-controls="create-panel"
-                id="tab-create"
-                tabIndex={0}
-                onClick={() => {
-                  setTab('create');
-                  setError('');
-                }}
-                className={`flex-1 flex items-center justify-center gap-2.5 py-2.5 rounded-lg font-semibold text-xs transition-all duration-200 ${
-                  tab === 'create'
-                    ? 'bg-gradient-to-r from-indigo-600 to-blue-500 text-white shadow-md shadow-indigo-600/15'
-                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/50'
-                }`}
-              >
-                <Code className="w-3.5 h-3.5" aria-hidden="true" />
-                <span>New Project</span>
-              </button>
-              <button
-                role="tab"
-                aria-selected={tab === 'clone'}
-                aria-controls="clone-panel"
-                id="tab-clone"
-                tabIndex={0}
-                onClick={() => {
-                  setTab('clone');
-                  setError('');
-                }}
-                className={`flex-1 flex items-center justify-center gap-2.5 py-2.5 rounded-lg font-semibold text-xs transition-all duration-200 ${
-                  tab === 'clone'
-                    ? 'bg-gradient-to-r from-indigo-600 to-blue-500 text-white shadow-md shadow-indigo-600/15'
-                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/50'
-                }`}
-              >
-                <Github className="w-3.5 h-3.5" aria-hidden="true" />
-                <span>Clone from GitHub</span>
-              </button>
-            </div>
-
-            {error ? (
-              <div className="mb-5 flex items-start gap-2.5 rounded-lg border border-red-500/20 bg-red-950/20 p-3 text-xs text-red-300">
-                <AlertCircle className="mt-0.5 h-4 w-4 flex-shrink-0 text-red-400" aria-hidden="true" />
-                <div>
-                  <span className="font-semibold">Error:</span> {error}
-                </div>
+                ))}
               </div>
-            ) : null}
-
-            <div id="create-panel" role="tabpanel" aria-labelledby="tab-create" className={tab === 'create' ? 'block' : 'hidden'}>
-              <form onSubmit={handleCreateProject} className="space-y-5">
-                <WorkspaceModeToggle
-                  mode={createMode}
-                  setMode={setCreateMode}
-                  disabled={loading}
-                  hasWorkspaces={workspaces.length > 0}
-                />
-
-                {createMode === 'existing' ? (
-                  <div>
-                    <label className="block text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-2">Selected Workspace</label>
-                    <div className="rounded-xl border border-slate-800 bg-slate-950/80 px-3.5 py-3 text-xs text-slate-200">
-                      {selectedWorkspace ? selectedWorkspace.name : 'Choose a workspace from the list on the left.'}
-                    </div>
-                  </div>
-                ) : (
-                  <div>
-                    <label htmlFor="create-workspace-name" className="block text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-2">
-                      Workspace Name
-                    </label>
-                    <input
-                      id="create-workspace-name"
-                      type="text"
-                      value={workspaceName}
-                      onChange={e => setWorkspaceName(e.target.value)}
-                      placeholder="My Workspace"
-                      disabled={loading}
-                      required={createMode === 'new'}
-                      className="w-full rounded-lg border border-slate-800 bg-slate-950/80 px-3.5 py-2.5 text-xs text-slate-200 outline-none transition duration-200 focus:border-indigo-500/80 focus:ring-2 focus:ring-indigo-500/10"
-                    />
-                  </div>
-                )}
-
-                <div>
-                  <label htmlFor="create-project-name" className="block text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-2">
-                    Project Name
-                  </label>
-                  <div className="relative flex items-center">
-                    <input
-                      id="create-project-name"
-                      type="text"
-                      value={projectName}
-                      onChange={e => setProjectName(e.target.value)}
-                      placeholder="python-api"
-                      disabled={loading}
-                      autoComplete="off"
-                      spellCheck={false}
-                      required
-                      className="w-full rounded-lg border border-slate-800 bg-slate-950/80 pl-3.5 pr-20 py-2.5 font-mono text-xs text-slate-200 outline-none transition duration-200 focus:border-indigo-500/80 focus:ring-2 focus:ring-indigo-500/10"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => triggerShuffle('create')}
-                      disabled={loading}
-                      aria-label="Generate random project name"
-                      className="absolute right-2.5 flex items-center gap-1 rounded-md border border-indigo-500/15 bg-indigo-500/10 px-2.5 py-1 text-[10px] font-bold tracking-wide text-indigo-300 transition duration-150 hover:bg-indigo-500/20"
-                    >
-                      <Shuffle className={`h-3 w-3 ${rollAnimation ? 'animate-dice' : ''}`} aria-hidden="true" />
-                      <span>Random</span>
-                    </button>
-                  </div>
-                  <p className="mt-1.5 text-[10px] text-slate-500">Project slugs are derived automatically on the backend.</p>
-                </div>
-
-                <div>
-                  <label className="block text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-2.5">Select Environment</label>
-                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2" role="radiogroup" aria-label="Environment choices">
-                    {LANGUAGES.map(lang => {
-                      const isSelected = language === lang.value;
-                      return (
-                        <div
-                          key={lang.value}
-                          role="radio"
-                          aria-checked={isSelected}
-                          tabIndex={loading ? -1 : 0}
-                          onClick={() => !loading && setLanguage(lang.value)}
-                          onKeyDown={e => {
-                            if (!loading && (e.key === ' ' || e.key === 'Enter')) {
-                              e.preventDefault();
-                              setLanguage(lang.value);
-                            }
-                          }}
-                          className={`interactive-card rounded-xl border p-3 text-left outline-none ${
-                            isSelected
-                              ? 'border-indigo-500/80 bg-indigo-950/20 shadow-md shadow-indigo-950/10'
-                              : 'border-slate-800/80 bg-slate-900/30'
-                          }`}
-                        >
-                          <div className="flex items-center gap-2.5">
-                            <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center overflow-hidden rounded-lg border border-slate-800/60 bg-slate-950/40 p-0.5">
-                              {lang.icon}
-                            </div>
-                            <div>
-                              <div className={`text-xs font-bold ${isSelected ? 'text-indigo-200' : 'text-slate-300'}`}>{lang.label}</div>
-                              <div className="mt-0.5 text-[9px] leading-normal text-slate-500">{lang.desc}</div>
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className={`glow-btn-primary w-full rounded-lg py-3 text-xs font-bold text-white flex items-center justify-center gap-2 ${
-                    loading ? 'cursor-not-allowed opacity-75' : ''
-                  }`}
-                >
-                  {loading ? (
-                    <>
-                      <div className="h-3.5 w-3.5 rounded-full border-2 border-white/30 border-t-white animate-spin" />
-                      <span>Provisioning environment…</span>
-                    </>
-                  ) : (
-                    <>
-                      <Plus className="h-4 w-4" aria-hidden="true" />
-                      <span>{createMode === 'existing' ? 'Add Project To Workspace' : 'Create Workspace'}</span>
-                    </>
-                  )}
-                </button>
-              </form>
             </div>
-
-            <div id="clone-panel" role="tabpanel" aria-labelledby="tab-clone" className={tab === 'clone' ? 'block' : 'hidden'}>
-              <form onSubmit={handleCloneProject} className="space-y-5">
-                <WorkspaceModeToggle
-                  mode={cloneMode}
-                  setMode={setCloneMode}
-                  disabled={loading}
-                  hasWorkspaces={workspaces.length > 0}
-                />
-
-                <div>
-                  <label htmlFor="clone-github-url" className="block text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-2">
-                    GitHub Repo URL
-                  </label>
-                  <input
-                    id="clone-github-url"
-                    type="url"
-                    value={githubUrl}
-                    onChange={e => setGithubUrl(e.target.value)}
-                    placeholder="https://github.com/username/repository…"
-                    disabled={loading}
-                    required
-                    className="w-full rounded-lg border border-slate-800 bg-slate-950/80 px-3.5 py-2.5 text-xs text-slate-200 outline-none transition duration-200 focus:border-indigo-500/80 focus:ring-2 focus:ring-indigo-500/10"
-                  />
-                  <p className="mt-1.5 flex items-center gap-1 text-[10px] text-slate-500">
-                    <HelpCircle className="h-3 w-3 flex-shrink-0 text-indigo-400/80" />
-                    <span>Supports public repositories only</span>
-                  </p>
-                </div>
-
-                {cloneMode === 'existing' ? (
-                  <div>
-                    <label className="block text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-2">Selected Workspace</label>
-                    <div className="rounded-xl border border-slate-800 bg-slate-950/80 px-3.5 py-3 text-xs text-slate-200">
-                      {selectedWorkspace ? selectedWorkspace.name : 'Choose a workspace from the list on the left.'}
-                    </div>
+            <div>
+              <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#8f867d]">Company</div>
+              <div className="mt-4 space-y-2">
+                {COMPANY_LINKS.map(item => (
+                  <div key={item} className="text-[1.05rem] text-[#5d5650]">
+                    {item}
                   </div>
-                ) : (
-                  <div>
-                    <label htmlFor="clone-workspace-name" className="block text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-2">
-                      Workspace Name
-                    </label>
-                    <input
-                      id="clone-workspace-name"
-                      type="text"
-                      value={cloneWorkspaceName}
-                      onChange={e => setCloneWorkspaceName(e.target.value)}
-                      placeholder="Imported Workspace"
-                      disabled={loading}
-                      required={cloneMode === 'new'}
-                      className="w-full rounded-lg border border-slate-800 bg-slate-950/80 px-3.5 py-2.5 text-xs text-slate-200 outline-none transition duration-200 focus:border-indigo-500/80 focus:ring-2 focus:ring-indigo-500/10"
-                    />
-                  </div>
-                )}
-
-                <div>
-                  <label htmlFor="clone-project-name" className="block text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-2">
-                    Project Name
-                  </label>
-                  <div className="relative flex items-center">
-                    <input
-                      id="clone-project-name"
-                      type="text"
-                      value={cloneProjectName}
-                      onChange={e => setCloneProjectName(e.target.value)}
-                      placeholder="github-import"
-                      disabled={loading}
-                      autoComplete="off"
-                      spellCheck={false}
-                      required
-                      className="w-full rounded-lg border border-slate-800 bg-slate-950/80 pl-3.5 pr-20 py-2.5 font-mono text-xs text-slate-200 outline-none transition duration-200 focus:border-indigo-500/80 focus:ring-2 focus:ring-indigo-500/10"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => triggerShuffle('clone')}
-                      disabled={loading}
-                      aria-label="Generate random clone project name"
-                      className="absolute right-2.5 flex items-center gap-1 rounded-md border border-indigo-500/15 bg-indigo-500/10 px-2.5 py-1 text-[10px] font-bold tracking-wide text-indigo-300 transition duration-150 hover:bg-indigo-500/20"
-                    >
-                      <Shuffle className={`h-3 w-3 ${rollAnimation ? 'animate-dice' : ''}`} aria-hidden="true" />
-                      <span>Random</span>
-                    </button>
-                  </div>
-                </div>
-
-                <div className="flex gap-3 rounded-lg border border-indigo-500/10 bg-indigo-950/10 p-3.5 text-xs">
-                  <Github className="h-4 w-4 flex-shrink-0 text-indigo-300" />
-                  <div className="text-[11px] leading-relaxed text-slate-400">
-                    Yuvro will clone the repository into the workspace and launch it as a separate project runtime.
-                  </div>
-                </div>
-
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className={`glow-btn-primary w-full rounded-lg py-3 text-xs font-bold text-white flex items-center justify-center gap-2 ${
-                    loading ? 'cursor-not-allowed opacity-75' : ''
-                  }`}
-                >
-                  {loading ? (
-                    <>
-                      <div className="h-3.5 w-3.5 rounded-full border-2 border-white/30 border-t-white animate-spin" />
-                      <span>Cloning & building container…</span>
-                    </>
-                  ) : (
-                    <>
-                      <ArrowRight className="h-4 w-4" aria-hidden="true" />
-                      <span>{cloneMode === 'existing' ? 'Clone Into Workspace' : 'Clone & Launch'}</span>
-                    </>
-                  )}
-                </button>
-              </form>
+                ))}
+              </div>
             </div>
-          </section>
-        </div>
+          </div>
+
+          <div className="grid gap-10 sm:grid-cols-2">
+            <div>
+              <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#8f867d]">Legal</div>
+              <div className="mt-4 space-y-2">
+                {LEGAL_LINKS.map(item => (
+                  <div key={item} className="text-[1.05rem] text-[#5d5650]">
+                    {item}
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div>
+              <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#8f867d]">Connect</div>
+              <div className="mt-4 space-y-2">
+                {CONNECT_LINKS.map(item => (
+                  <div key={item} className="text-[1.05rem] text-[#5d5650]">
+                    {item}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </footer>
       </div>
     </div>
   );

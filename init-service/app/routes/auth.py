@@ -73,6 +73,12 @@ def initiate_google_auth(origin: str):
     return RedirectResponse(url=redirect_url, status_code=status.HTTP_302_FOUND)
 
 
+@router.get("/github")
+def initiate_github_auth(origin: str):
+    redirect_url = auth_service.build_github_auth_url(origin)
+    return RedirectResponse(url=redirect_url, status_code=status.HTTP_302_FOUND)
+
+
 @router.get("/google/callback")
 def google_auth_callback(request: Request, code: str | None = None, state: str | None = None):
     callback_origin = settings.default_client_origin.rstrip("/")
@@ -93,6 +99,43 @@ def google_auth_callback(request: Request, code: str | None = None, state: str |
         verified_state = auth_service.verify_oauth_state(state)
         callback_origin = verified_state["origin"].rstrip("/")
         user = auth_service.authenticate_google_user(code)
+        redirect = RedirectResponse(
+            url=f"{callback_origin}/oauth-success",
+            status_code=status.HTTP_302_FOUND,
+        )
+        auth_service.create_session(redirect, user["id"], request)
+        return redirect
+    except Exception as exc:
+        error_code = "oauth_failed"
+        detail = getattr(exc, "detail", "")
+        if detail == "ACCOUNT_EXISTS_WITH_DIFFERENT_SIGNIN_METHOD":
+            error_code = "account_exists_different_signin_method"
+        return RedirectResponse(
+            url=f"{callback_origin}/?{urlencode({'authError': error_code})}",
+            status_code=status.HTTP_302_FOUND,
+        )
+
+
+@router.get("/github/callback")
+def github_auth_callback(request: Request, code: str | None = None, state: str | None = None):
+    callback_origin = settings.default_client_origin.rstrip("/")
+
+    if state:
+        try:
+            callback_origin = auth_service.verify_oauth_state(state)["origin"].rstrip("/")
+        except Exception:
+            callback_origin = settings.default_client_origin.rstrip("/")
+
+    if not code or not state:
+        return RedirectResponse(
+            url=f"{callback_origin}/?{urlencode({'authError': 'oauth_failed'})}",
+            status_code=status.HTTP_302_FOUND,
+        )
+
+    try:
+        verified_state = auth_service.verify_oauth_state(state)
+        callback_origin = verified_state["origin"].rstrip("/")
+        user = auth_service.authenticate_github_user(code)
         redirect = RedirectResponse(
             url=f"{callback_origin}/oauth-success",
             status_code=status.HTTP_302_FOUND,

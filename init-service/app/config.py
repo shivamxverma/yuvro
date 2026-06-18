@@ -23,6 +23,8 @@ class Settings(BaseSettings):
     auth_secret_key: str = "dev-only-change-me"
     google_client_id: str = ""
     google_client_secret: str = ""
+    github_client_id: str = ""
+    github_client_secret: str = ""
 
     model_config = SettingsConfigDict(
         env_file=".env",
@@ -42,6 +44,10 @@ class Settings(BaseSettings):
     @property
     def google_redirect_uri(self) -> str:
         return f"{self.public_base_url.rstrip('/')}/auth/google/callback"
+
+    @property
+    def github_redirect_uri(self) -> str:
+        return f"{self.public_base_url.rstrip('/')}/auth/github/callback"
 
 
 settings = Settings()

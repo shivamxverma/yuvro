@@ -6,6 +6,14 @@ import { INIT_SERVICE_URL } from "../lib/api";
 
 type Mode = "signin" | "signup";
 
+function GithubMark() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" className="h-5 w-5 fill-current">
+      <path d="M12 0C5.373 0 0 5.373 0 12a12.01 12.01 0 0 0 8.207 11.387c.6.111.793-.261.793-.577v-2.234c-3.338.726-4.032-1.416-4.032-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.744.082-.729.082-.729 1.205.085 1.839 1.237 1.839 1.237 1.07 1.834 2.808 1.305 3.493.998.107-.776.418-1.305.761-1.605-2.665-.304-5.466-1.332-5.466-5.93 0-1.312.469-2.381 1.236-3.221-.124-.304-.535-1.524.117-3.176 0 0 1.008-.322 3.3 1.229A11.49 11.49 0 0 1 12 5.803c1.02.005 2.047.138 3.006.404 2.29-1.551 3.298-1.229 3.298-1.229.651 1.652.24 2.872.117 3.176.767.84 1.235 1.909 1.235 3.221 0 4.609-2.804 5.624-5.475 5.921.43.371.814 1.102.814 2.222v3.293c0 .319.192.69.8.576A12.01 12.01 0 0 0 24 12c0-6.627-5.373-12-12-12Z" />
+    </svg>
+  );
+}
+
 export function AuthPage() {
   const { signIn, signUp } = useAuth();
   const [searchParams] = useSearchParams();
@@ -21,9 +29,9 @@ export function AuthPage() {
 
   const oauthErrorMessage =
     authError === "account_exists_different_signin_method"
-      ? "This email is already registered with email and password. Sign in with that method."
+      ? "This email is already registered with a different sign-in method."
       : authError === "oauth_failed"
-        ? "Google sign-in could not be completed."
+        ? "OAuth sign-in could not be completed."
         : "";
 
   const handleSubmit = async (event: React.FormEvent) => {
@@ -46,6 +54,11 @@ export function AuthPage() {
   const handleGoogleSignIn = () => {
     const origin = window.location.origin;
     window.location.assign(`${INIT_SERVICE_URL}/auth/google?origin=${encodeURIComponent(origin)}`);
+  };
+
+  const handleGitHubSignIn = () => {
+    const origin = window.location.origin;
+    window.location.assign(`${INIT_SERVICE_URL}/auth/github?origin=${encodeURIComponent(origin)}`);
   };
 
   return (
@@ -192,16 +205,27 @@ export function AuthPage() {
                   <div className="h-px flex-1 bg-slate-800" />
                 </div>
 
-                <button
-                  type="button"
-                  onClick={handleGoogleSignIn}
-                  className="flex w-full items-center justify-center gap-3 rounded-2xl border border-slate-800 bg-slate-900/80 px-4 py-3 text-sm font-semibold text-slate-100 transition hover:border-slate-700 hover:bg-slate-900"
-                >
-                  <span className="flex h-5 w-5 items-center justify-center rounded-full bg-white text-[11px] font-bold text-slate-950">
-                    G
-                  </span>
-                  Continue with Google
-                </button>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <button
+                    type="button"
+                    onClick={handleGoogleSignIn}
+                    className="flex w-full items-center justify-center gap-3 rounded-2xl border border-slate-800 bg-slate-900/80 px-4 py-3 text-sm font-semibold text-slate-100 transition hover:border-slate-700 hover:bg-slate-900"
+                  >
+                    <span className="flex h-5 w-5 items-center justify-center rounded-full bg-white text-[11px] font-bold text-slate-950">
+                      G
+                    </span>
+                    Continue with Google
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleGitHubSignIn}
+                    className="flex w-full items-center justify-center gap-3 rounded-2xl border border-slate-800 bg-slate-900/80 px-4 py-3 text-sm font-semibold text-slate-100 transition hover:border-slate-700 hover:bg-slate-900"
+                  >
+                    <GithubMark />
+                    Continue with GitHub
+                  </button>
+                </div>
               </form>
 
               <p className="mt-5 text-sm leading-6 text-slate-500">

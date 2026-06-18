@@ -98,11 +98,11 @@ export function Sidebar({
   };
 
   return (
-    <div className="w-full h-full bg-[#181818] border-r border-[#2b2b2b] flex flex-col shrink-0">
-      <div className="flex items-center justify-between px-3 py-2 border-b border-[#252526]">
+    <div className="flex h-full w-full shrink-0 flex-col border-r border-white/8 bg-[#0b1020]">
+      <div className="flex items-center justify-between border-b border-white/8 px-4 py-3">
         <div className="flex items-center gap-2">
-          <FolderTree className="w-3.5 h-3.5 text-[#c5c5c5]" aria-hidden="true" />
-          <span className="text-[10px] font-bold text-[#bbbbbb] uppercase tracking-[0.18em]">
+          <FolderTree className="h-3.5 w-3.5 text-[#6dc7ff]" aria-hidden="true" />
+          <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-400">
             Explorer
           </span>
         </div>
@@ -114,7 +114,7 @@ export function Sidebar({
             }}
             aria-label="New File"
             title="New File"
-            className="p-1 text-[#9da1a6] hover:text-[#d4d4d4] hover:bg-[#2a2d2e] rounded-sm cursor-pointer transition duration-150 outline-none focus-visible:ring-2 focus-visible:ring-[#0078d4]"
+            className="cursor-pointer rounded-lg p-1.5 text-slate-500 transition duration-150 hover:bg-white/[0.06] hover:text-slate-200 outline-none focus-visible:ring-2 focus-visible:ring-[#18b6f6]"
           >
             <FilePlus className="w-3.5 h-3.5" aria-hidden="true" />
           </button>
@@ -125,21 +125,21 @@ export function Sidebar({
             }}
             aria-label="New Folder"
             title="New Folder"
-            className="p-1 text-[#9da1a6] hover:text-[#d4d4d4] hover:bg-[#2a2d2e] rounded-sm cursor-pointer transition duration-150 outline-none focus-visible:ring-2 focus-visible:ring-[#0078d4]"
+            className="cursor-pointer rounded-lg p-1.5 text-slate-500 transition duration-150 hover:bg-white/[0.06] hover:text-slate-200 outline-none focus-visible:ring-2 focus-visible:ring-[#18b6f6]"
           >
             <FolderPlus className="w-3.5 h-3.5" aria-hidden="true" />
           </button>
         </div>
       </div>
 
-      <div className="px-3 pt-3 pb-1 text-[10px] font-bold text-[#8c8c8c] uppercase tracking-[0.16em] select-none">
+      <div className="px-4 pb-1 pt-4 text-[10px] font-bold uppercase tracking-[0.16em] text-slate-500 select-none">
         Workspace
       </div>
 
-      <div className="px-2 pb-2">
-        <div className="mb-1 flex items-center gap-1.5 px-1 text-[11px] text-[#d4d4d4] select-none">
-          <ChevronDown className="w-3.5 h-3.5 text-[#c5c5c5]" aria-hidden="true" />
-          <FolderOpen className="w-4 h-4 text-[#dcb67a]" aria-hidden="true" />
+      <div className="px-3 pb-3">
+        <div className="mb-2 flex items-center gap-1.5 rounded-xl border border-white/6 bg-white/[0.03] px-3 py-2 text-[11px] text-slate-200 select-none">
+          <ChevronDown className="h-3.5 w-3.5 text-slate-500" aria-hidden="true" />
+          <FolderOpen className="h-4 w-4 text-[#f59e0b]" aria-hidden="true" />
           <span className="truncate font-medium">{workspaceLabel || "workspace"}</span>
         </div>
         <div className="flex flex-col">
@@ -157,18 +157,18 @@ export function Sidebar({
                     }
                     onSwitchProject(project.id);
                   }}
-                  className={`w-full flex items-center gap-2 px-2 py-1 text-left text-[13px] transition duration-150 ${
+                  className={`mb-1 flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left text-[13px] transition duration-150 ${
                     isActive
-                      ? "bg-[#2a2d2e] text-[#ffffff]"
-                      : "text-[#cccccc] hover:bg-[#2a2d2e] hover:text-[#ffffff]"
+                      ? "bg-[#171f34] text-white shadow-[inset_0_0_0_1px_rgba(109,199,255,0.16)]"
+                      : "text-slate-300 hover:bg-white/[0.05] hover:text-white"
                   }`}
                 >
                   {isExpanded ? (
-                    <ChevronDown className="w-3.5 h-3.5 shrink-0 text-[#c5c5c5]" aria-hidden="true" />
+                    <ChevronDown className="h-3.5 w-3.5 shrink-0 text-slate-500" aria-hidden="true" />
                   ) : (
-                    <ChevronRight className="w-3.5 h-3.5 shrink-0 text-[#c5c5c5]" aria-hidden="true" />
+                    <ChevronRight className="h-3.5 w-3.5 shrink-0 text-slate-500" aria-hidden="true" />
                   )}
-                  <Folder className="w-4 h-4 shrink-0 text-[#dcb67a]" aria-hidden="true" />
+                  <Folder className="h-4 w-4 shrink-0 text-[#f59e0b]" aria-hidden="true" />
                   <span className="truncate">{project.name}</span>
                 </button>
 
@@ -176,12 +176,12 @@ export function Sidebar({
                   <>
                     {creating && creating.parentId === rootNodeId && (
                       <div className="px-2 py-1">
-                        <div className="flex items-center gap-2 bg-[#1f1f1f] border border-[#0078d4] rounded-sm px-2 py-1.5 ml-[18px]">
-                          <span className="shrink-0 text-[#9da1a6]">
+                        <div className="ml-[18px] flex items-center gap-2 rounded-xl border border-[#18b6f6]/40 bg-[#0f1729] px-3 py-2">
+                          <span className="shrink-0 text-slate-500">
                             {creating.type === "folder" ? (
-                              <Folder className="w-3.5 h-3.5 text-[#dcb67a]" />
+                              <Folder className="h-3.5 w-3.5 text-[#f59e0b]" />
                             ) : (
-                              <FileIcon className="w-3.5 h-3.5" />
+                              <FileIcon className="h-3.5 w-3.5" />
                             )}
                           </span>
                           <input
@@ -196,7 +196,7 @@ export function Sidebar({
                             spellCheck={false}
                             autoComplete="off"
                             placeholder={creating.type === "folder" ? "folder name…" : "file name…"}
-                            className="flex-1 bg-transparent border-none outline-none text-[#d4d4d4] text-xs min-w-0"
+                            className="min-w-0 flex-1 border-none bg-transparent text-xs text-slate-200 outline-none"
                           />
                         </div>
                       </div>
@@ -204,7 +204,7 @@ export function Sidebar({
 
                     <div className="py-0.5">
                       {rootFiles.length === 0 && !creating ? (
-                        <div className="px-2 ml-[18px] text-[11px] text-[#6b6b6b]">
+                        <div className="ml-[18px] px-2 text-[11px] text-slate-600">
                           No files
                         </div>
                       ) : (

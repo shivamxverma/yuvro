@@ -101,6 +101,19 @@ uvicorn app.main:app --host 0.0.0.0 --port 3001 --reload
 # Starts at http://localhost:3001
 ```
 
+For OAuth locally, configure these init-service environment variables in `init-service/.env` before starting the backend:
+```env
+CLIENT_ORIGINS=http://localhost:5173
+PUBLIC_BASE_URL=http://localhost:3001
+AUTH_SECRET_KEY=replace-with-a-long-random-secret
+GOOGLE_CLIENT_ID=
+GOOGLE_CLIENT_SECRET=
+GITHUB_CLIENT_ID=
+GITHUB_CLIENT_SECRET=
+```
+Google callback URL: `http://localhost:3001/auth/google/callback`
+GitHub callback URL: `http://localhost:3001/auth/github/callback`
+
 ### 3. Orchestrator Setup (FastAPI Backend)
 The container lifecycle manager which interfaces with Docker.
 ```bash
@@ -201,4 +214,3 @@ You can test SQLite databases directly inside the workspace, or dynamically prov
 Below is a screen recording demonstrating the platform's workspace initialization, terminal execution, and the interactive SQLite database viewer:
 
 [Watch the Demo Video on Google Drive](https://drive.google.com/file/d/1--Tg6yNgQp1A2IOS2h6R4wI5CgFyHUav/view?usp=sharing)
-

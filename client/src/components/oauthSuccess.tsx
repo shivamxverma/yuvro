@@ -28,7 +28,7 @@ export function OAuthSuccessPage() {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-[#030712] px-4 text-center text-slate-300">
-      Finalizing Google sign-in...
+      Finalizing sign-in...
     </div>
   );
 }

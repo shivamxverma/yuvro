@@ -23,6 +23,7 @@ from app.models.auth import AuthMethod, Session, User
 
 PASSWORD_PROVIDER = "password"
 GOOGLE_PROVIDER = "google"
+GITHUB_PROVIDER = "github"
 SESSION_ACTIVE = "ACTIVE"
 SESSION_REVOKED = "REVOKED"
 SESSION_EXPIRED = "EXPIRED"
@@ -30,6 +31,14 @@ ACCESS_TOKEN_TYPE = "access"
 OAUTH_STATE_TYPE = "oauth_state"
 GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token"
 GOOGLE_AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth"
+GITHUB_AUTH_URL = "https://github.com/login/oauth/authorize"
+GITHUB_TOKEN_URL = "https://github.com/login/oauth/access_token"
+GITHUB_USER_URL = "https://api.github.com/user"
+GITHUB_EMAILS_URL = "https://api.github.com/user/emails"
+GITHUB_API_HEADERS = {
+    "Accept": "application/vnd.github+json",
+    "User-Agent": "YuvroAuth/1.0",
+}
 
 
 def _now() -> datetime:
@@ -249,6 +258,14 @@ def _ensure_google_configured() -> None:
         )
 
 
+def _ensure_github_configured() -> None:
+    if not settings.github_client_id or not settings.github_client_secret:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="GitHub OAuth is not configured.",
+        )
+
+
 def _validate_origin(origin: str) -> str:
     normalized = origin.strip().rstrip("/")
     if normalized not in [allowed.rstrip("/") for allowed in settings.allowed_client_origins]:
@@ -276,6 +293,64 @@ def _generate_unique_name(session, email: str, preferred_name: str | None) -> st
             return current_name
         counter += 1
         current_name = f"{candidate}-{counter}"
+
+
+def _authenticate_oauth_user(
+    *,
+    provider: str,
+    provider_user_id: str,
+    email: str,
+    name: str | None,
+) -> dict:
+    normalized_email = _normalize_email(email)
+
+    with session_scope() as session:
+        existing_oauth_auth = session.scalar(
+            select(AuthMethod)
+            .options(joinedload(AuthMethod.user))
+            .where(
+                AuthMethod.provider == provider,
+                AuthMethod.provider_user_id == provider_user_id,
+            )
+        )
+        if existing_oauth_auth:
+            user = existing_oauth_auth.user
+            if user.name != name and isinstance(name, str) and name.strip():
+                user.name = name.strip()
+                user.updated_at = _now()
+            return _serialize_user(user)
+
+        existing_user = session.scalar(select(User).where(User.email == normalized_email))
+        if existing_user:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="ACCOUNT_EXISTS_WITH_DIFFERENT_SIGNIN_METHOD",
+            )
+
+        now = _now()
+        user = User(
+            id=str(uuid.uuid4()),
+            email=normalized_email,
+            name=(
+                name.strip()
+                if isinstance(name, str) and name.strip()
+                else _generate_unique_name(session, normalized_email, None)
+            ),
+            created_at=now,
+            updated_at=now,
+        )
+        auth_method = AuthMethod(
+            id=str(uuid.uuid4()),
+            user_id=user.id,
+            provider=provider,
+            provider_user_id=provider_user_id,
+            password_hash=None,
+            created_at=now,
+        )
+        session.add(user)
+        session.add(auth_method)
+        session.flush()
+        return _serialize_user(user)
 
 
 def create_user(email: str, password: str, name: str | None) -> dict:
@@ -550,6 +625,21 @@ def build_google_auth_url(origin: str) -> str:
     return f"{GOOGLE_AUTH_URL}?{query}"
 
 
+def build_github_auth_url(origin: str) -> str:
+    _ensure_github_configured()
+    validated_origin = _validate_origin(origin)
+    state = _generate_state_token(validated_origin)
+    query = urlencode(
+        {
+            "client_id": settings.github_client_id,
+            "redirect_uri": settings.github_redirect_uri,
+            "scope": "read:user user:email",
+            "state": state,
+        }
+    )
+    return f"{GITHUB_AUTH_URL}?{query}"
+
+
 def verify_oauth_state(state: str) -> dict[str, Any]:
     payload = _decode_signed_payload(state, OAUTH_STATE_TYPE)
     if not payload:
@@ -594,6 +684,37 @@ def _exchange_google_code(code: str) -> str:
     return id_token_value
 
 
+def _exchange_github_code(code: str) -> str:
+    _ensure_github_configured()
+    response = requests.post(
+        GITHUB_TOKEN_URL,
+        headers={
+            **GITHUB_API_HEADERS,
+            "Accept": "application/json",
+        },
+        data={
+            "client_id": settings.github_client_id,
+            "client_secret": settings.github_client_secret,
+            "code": code,
+            "redirect_uri": settings.github_redirect_uri,
+        },
+        timeout=15,
+    )
+    if response.status_code != 200:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="GitHub OAuth failed.",
+        )
+    payload = response.json()
+    access_token = payload.get("access_token")
+    if not isinstance(access_token, str) or not access_token:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="GitHub OAuth failed.",
+        )
+    return access_token
+
+
 def _verify_google_id_token(id_token_value: str) -> dict[str, Any]:
     _ensure_google_configured()
     try:
@@ -622,6 +743,76 @@ def _verify_google_id_token(id_token_value: str) -> dict[str, Any]:
     return payload
 
 
+def _fetch_github_user(access_token: str) -> dict[str, Any]:
+    _ensure_github_configured()
+    response = requests.get(
+        GITHUB_USER_URL,
+        headers={
+            **GITHUB_API_HEADERS,
+            "Authorization": f"Bearer {access_token}",
+        },
+        timeout=15,
+    )
+    if response.status_code != 200:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="GitHub OAuth failed.",
+        )
+    payload = response.json()
+    if not isinstance(payload, dict):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="GitHub OAuth failed.",
+        )
+    return payload
+
+
+def _fetch_github_primary_email(access_token: str) -> str:
+    response = requests.get(
+        GITHUB_EMAILS_URL,
+        headers={
+            **GITHUB_API_HEADERS,
+            "Authorization": f"Bearer {access_token}",
+        },
+        timeout=15,
+    )
+    if response.status_code != 200:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="GitHub OAuth failed.",
+        )
+    payload = response.json()
+    if not isinstance(payload, list):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="GitHub OAuth failed.",
+        )
+
+    verified_emails: list[str] = []
+    primary_verified_email: str | None = None
+    for item in payload:
+        if not isinstance(item, dict):
+            continue
+        email = item.get("email")
+        if not isinstance(email, str) or not email.strip():
+            continue
+        if item.get("verified") is True:
+            verified_emails.append(email)
+            if item.get("primary") is True:
+                primary_verified_email = email
+                break
+
+    if primary_verified_email:
+        return primary_verified_email
+    if verified_emails:
+        return verified_emails[0]
+
+    raise HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="GitHub account email is not available or not verified.",
+    )
+
+
 def authenticate_google_user(code: str) -> dict:
     verified_payload = _verify_google_id_token(_exchange_google_code(code))
     google_sub = verified_payload.get("sub")
@@ -632,48 +823,34 @@ def authenticate_google_user(code: str) -> dict:
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Google OAuth failed.",
         )
-    normalized_email = _normalize_email(str(email))
+    return _authenticate_oauth_user(
+        provider=GOOGLE_PROVIDER,
+        provider_user_id=google_sub,
+        email=str(email),
+        name=name if isinstance(name, str) else None,
+    )
 
-    with session_scope() as session:
-        existing_google_auth = session.scalar(
-            select(AuthMethod)
-            .options(joinedload(AuthMethod.user))
-            .where(
-                AuthMethod.provider == GOOGLE_PROVIDER,
-                AuthMethod.provider_user_id == google_sub,
-            )
-        )
-        if existing_google_auth:
-            user = existing_google_auth.user
-            if user.name != name and isinstance(name, str) and name.strip():
-                user.name = name.strip()
-                user.updated_at = _now()
-            return _serialize_user(user)
 
-        existing_user = session.scalar(select(User).where(User.email == normalized_email))
-        if existing_user:
-            raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT,
-                detail="ACCOUNT_EXISTS_WITH_DIFFERENT_SIGNIN_METHOD",
-            )
+def authenticate_github_user(code: str) -> dict:
+    access_token = _exchange_github_code(code)
+    github_user = _fetch_github_user(access_token)
+    github_user_id = github_user.get("id")
+    email = github_user.get("email")
+    name = github_user.get("name")
+    login = github_user.get("login")
 
-        now = _now()
-        user = User(
-            id=str(uuid.uuid4()),
-            email=normalized_email,
-            name=(name.strip() if isinstance(name, str) and name.strip() else _generate_unique_name(session, normalized_email, None)),
-            created_at=now,
-            updated_at=now,
+    if github_user_id in (None, ""):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="GitHub OAuth failed.",
         )
-        auth_method = AuthMethod(
-            id=str(uuid.uuid4()),
-            user_id=user.id,
-            provider=GOOGLE_PROVIDER,
-            provider_user_id=google_sub,
-            password_hash=None,
-            created_at=now,
-        )
-        session.add(user)
-        session.add(auth_method)
-        session.flush()
-        return _serialize_user(user)
+
+    resolved_email = email if isinstance(email, str) and email.strip() else _fetch_github_primary_email(access_token)
+    resolved_name = name if isinstance(name, str) and name.strip() else (login if isinstance(login, str) and login.strip() else None)
+
+    return _authenticate_oauth_user(
+        provider=GITHUB_PROVIDER,
+        provider_user_id=str(github_user_id),
+        email=resolved_email,
+        name=resolved_name,
+    )

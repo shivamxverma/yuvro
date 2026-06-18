@@ -80,13 +80,13 @@ export function FileNode({
         }}
         className={`group flex items-center gap-1.5 px-2 py-[3px] cursor-pointer text-[13px] select-none transition-colors duration-100 focus-visible:ring-1 focus-visible:ring-[#0078d4] outline-none ${
           isSelected
-            ? "bg-[#37373d] text-[#ffffff]"
-            : "text-[#cccccc] hover:text-[#ffffff] hover:bg-[#2a2d2e]"
+            ? "bg-[#171f34] text-white"
+            : "text-slate-300 hover:bg-white/[0.05] hover:text-white"
         }`}
         style={{ paddingLeft: `${rowLeftPad}px` }}
       >
         {isDir ? (
-          <span className="text-[#c5c5c5] transition-colors flex-shrink-0">
+          <span className="flex-shrink-0 text-slate-500 transition-colors">
             {isOpen ? (
               <ChevronDown className="w-3.5 h-3.5" aria-hidden="true" />
             ) : (
@@ -99,7 +99,7 @@ export function FileNode({
 
         <span
           className="flex-shrink-0"
-          style={{ color: isDir ? "#dcb67a" : fileColor(file.name) }}
+          style={{ color: isDir ? "#f59e0b" : fileColor(file.name) }}
         >
           {isDir ? (
             isOpen ? (
@@ -130,7 +130,7 @@ export function FileNode({
                   }}
                   aria-label="New File"
                   title="New File"
-                  className="text-[#9da1a6] hover:text-[#d4d4d4] p-0.5 hover:bg-[#3a3d41] rounded-sm flex-shrink-0 transition duration-150 cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-[#0078d4]"
+                  className="cursor-pointer rounded-md p-0.5 text-slate-500 transition duration-150 hover:bg-white/[0.08] hover:text-slate-200 outline-none focus-visible:ring-1 focus-visible:ring-[#0078d4]"
                 >
                   <FilePlus className="w-3.5 h-3.5" aria-hidden="true" />
                 </button>
@@ -146,7 +146,7 @@ export function FileNode({
                   }}
                   aria-label="New Folder"
                   title="New Folder"
-                  className="text-[#9da1a6] hover:text-[#d4d4d4] p-0.5 hover:bg-[#3a3d41] rounded-sm flex-shrink-0 transition duration-150 cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-[#0078d4]"
+                  className="cursor-pointer rounded-md p-0.5 text-slate-500 transition duration-150 hover:bg-white/[0.08] hover:text-slate-200 outline-none focus-visible:ring-1 focus-visible:ring-[#0078d4]"
                 >
                   <FolderPlus className="w-3.5 h-3.5" aria-hidden="true" />
                 </button>
@@ -159,7 +159,7 @@ export function FileNode({
               }}
               aria-label={`Delete ${file.name}`}
               title="Delete item"
-              className="text-[#c97777] hover:text-[#f48771] p-0.5 hover:bg-[#3a3d41] rounded-sm flex-shrink-0 transition duration-150 cursor-pointer outline-none focus-visible:ring-1 focus-visible:ring-[#f48771]"
+              className="cursor-pointer rounded-md p-0.5 text-rose-300/70 transition duration-150 hover:bg-white/[0.08] hover:text-rose-300 outline-none focus-visible:ring-1 focus-visible:ring-[#f48771]"
             >
               <Trash2 className="w-3.5 h-3.5" aria-hidden="true" />
             </button>
@@ -171,10 +171,10 @@ export function FileNode({
         <>
           {creating && creating.parentId === file.id && (
             <div className="py-1" style={{ paddingLeft: `${rowLeftPad + 14}px` }}>
-              <div className="flex items-center gap-2 bg-[#1f1f1f] border border-[#0078d4] rounded-sm px-2 py-1.5">
-                <span className="shrink-0 text-[#9da1a6]">
+              <div className="flex items-center gap-2 rounded-xl border border-[#18b6f6]/40 bg-[#0f1729] px-3 py-2">
+                <span className="shrink-0 text-slate-500">
                   {creating.type === "folder" ? (
-                    <Folder className="w-3.5 h-3.5 text-[#dcb67a]" />
+                    <Folder className="w-3.5 h-3.5 text-[#f59e0b]" />
                   ) : (
                     <FileIcon className="w-3.5 h-3.5" />
                   )}
@@ -206,7 +206,7 @@ export function FileNode({
                   spellCheck={false}
                   autoComplete="off"
                   placeholder={creating.type === "folder" ? "folder name…" : "file name…"}
-                  className="flex-1 bg-transparent border-none outline-none text-[#d4d4d4] text-xs min-w-0"
+                  className="min-w-0 flex-1 border-none bg-transparent text-xs text-slate-200 outline-none"
                 />
               </div>
             </div>
