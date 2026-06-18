@@ -36,23 +36,23 @@ export const Editor = ({
 
   if (!selectedFile) {
     return (
-      <div className="w-full h-full bg-[#030712] flex flex-col items-center justify-center p-8 text-center select-none overflow-y-auto">
-        <div className="max-w-md w-full flex flex-col items-center gap-6">
+      <div className="flex h-full w-full select-none flex-col items-center justify-center overflow-y-auto bg-[radial-gradient(circle_at_top,_rgba(124,92,255,0.12),_transparent_30%),#09101c] p-8 text-center">
+        <div className="flex w-full max-w-2xl flex-col items-center gap-6">
           <div className="flex flex-col items-center gap-2">
-            <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-indigo-600 to-blue-500 flex items-center justify-center text-white font-extrabold text-2xl shadow-lg shadow-indigo-500/10 mb-2">
+            <div className="mb-2 flex h-14 w-14 items-center justify-center rounded-[1.25rem] bg-gradient-to-br from-[#7c5cff] to-[#18b6f6] text-2xl font-extrabold text-white shadow-[0_16px_40px_rgba(24,182,246,0.16)]">
               Y
             </div>
-            <h2 className="text-xl font-bold text-slate-100 flex items-center gap-2 m-0">
-              Welcome to Yuvro Workspace
+            <h2 className="m-0 flex items-center gap-2 text-2xl font-bold text-slate-100">
+              Workspace ready
             </h2>
-            <p className="text-xs text-slate-500">
-              Select a file from the explorer sidebar to begin coding, or use the quick links below.
+            <p className="max-w-xl text-sm text-slate-500">
+              Select a file from the explorer, or use the controls below to run, preview, create files, and inspect databases.
             </p>
           </div>
 
-          <div className="w-full grid grid-cols-1 sm:grid-cols-2 gap-3.5 text-left mt-2">
-            <div className="p-3.5 rounded-xl border border-slate-900 bg-slate-950/40 hover:bg-slate-900/10 transition duration-150">
-              <div className="flex items-center gap-2.5 text-indigo-400">
+          <div className="mt-2 grid w-full grid-cols-1 gap-3.5 text-left sm:grid-cols-2">
+            <div className="rounded-2xl border border-white/8 bg-white/[0.04] p-4 transition duration-150 hover:bg-white/[0.06]">
+              <div className="flex items-center gap-2.5 text-[#18b6f6]">
                 <Play className="w-4 h-4" />
                 <span className="text-xs font-bold text-slate-200">Run Your Code</span>
               </div>
@@ -61,18 +61,18 @@ export const Editor = ({
               </p>
             </div>
 
-            <div className="p-3.5 rounded-xl border border-slate-900 bg-slate-950/40 hover:bg-slate-900/10 transition duration-150">
-              <div className="flex items-center gap-2.5 text-indigo-400">
+            <div className="rounded-2xl border border-white/8 bg-white/[0.04] p-4 transition duration-150 hover:bg-white/[0.06]">
+              <div className="flex items-center gap-2.5 text-[#18b6f6]">
                 <Eye className="w-4 h-4" />
                 <span className="text-xs font-bold text-slate-200">Live Preview</span>
               </div>
               <p className="text-[10px] text-slate-500 mt-1.5 leading-relaxed">
-                Start a server and toggle the <span className="text-indigo-400 font-semibold">App Preview</span> tab to view web pages in real-time.
+                Start a server and open <span className="text-[#18b6f6] font-semibold">App Preview</span> to view web pages in real-time.
               </p>
             </div>
 
-            <div className="p-3.5 rounded-xl border border-slate-900 bg-slate-950/40 hover:bg-slate-900/10 transition duration-150">
-              <div className="flex items-center gap-2.5 text-indigo-400">
+            <div className="rounded-2xl border border-white/8 bg-white/[0.04] p-4 transition duration-150 hover:bg-white/[0.06]">
+              <div className="flex items-center gap-2.5 text-[#18b6f6]">
                 <PlusSquare className="w-4 h-4" />
                 <span className="text-xs font-bold text-slate-200">Create Files</span>
               </div>
@@ -81,8 +81,8 @@ export const Editor = ({
               </p>
             </div>
 
-            <div className="p-3.5 rounded-xl border border-slate-900 bg-slate-950/40 hover:bg-slate-900/10 transition duration-150">
-              <div className="flex items-center gap-2.5 text-indigo-400">
+            <div className="rounded-2xl border border-white/8 bg-white/[0.04] p-4 transition duration-150 hover:bg-white/[0.06]">
+              <div className="flex items-center gap-2.5 text-[#18b6f6]">
                 <Terminal className="w-4 h-4" />
                 <span className="text-xs font-bold text-slate-200">Interactive Terminal</span>
               </div>
@@ -92,33 +92,33 @@ export const Editor = ({
             </div>
           </div>
 
-          <div className="w-full bg-slate-950/60 border border-slate-900/80 rounded-xl p-4 text-left">
-            <div className="flex items-center gap-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">
-              <Keyboard className="w-3.5 h-3.5 text-indigo-400" />
+          <div className="w-full rounded-2xl border border-white/8 bg-white/[0.04] p-5 text-left">
+            <div className="mb-3 flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-slate-400">
+              <Keyboard className="w-3.5 h-3.5 text-[#18b6f6]" />
               <span>Keyboard Shortcuts</span>
             </div>
             <div className="grid grid-cols-2 gap-y-2 gap-x-6">
               <div className="flex items-center justify-between text-xs text-slate-400 py-0.5">
                 <span>Save file content</span>
-                <kbd className="px-1.5 py-0.5 bg-slate-900 border border-slate-800 rounded text-[10px] font-mono text-slate-300">Ctrl&nbsp;+&nbsp;S</kbd>
+                <kbd className="rounded border border-white/8 bg-[#0d1321] px-1.5 py-0.5 text-[10px] font-mono text-slate-300">Ctrl&nbsp;+&nbsp;S</kbd>
               </div>
               <div className="flex items-center justify-between text-xs text-slate-400 py-0.5">
                 <span>Focus Terminal</span>
-                <kbd className="px-1.5 py-0.5 bg-slate-900 border border-slate-800 rounded text-[10px] font-mono text-slate-300">Ctrl&nbsp;+&nbsp;`</kbd>
+                <kbd className="rounded border border-white/8 bg-[#0d1321] px-1.5 py-0.5 text-[10px] font-mono text-slate-300">Ctrl&nbsp;+&nbsp;`</kbd>
               </div>
               <div className="flex items-center justify-between text-xs text-slate-400 py-0.5">
                 <span>Search settings</span>
-                <kbd className="px-1.5 py-0.5 bg-slate-900 border border-slate-800 rounded text-[10px] font-mono text-slate-300">Ctrl&nbsp;+&nbsp;,</kbd>
+                <kbd className="rounded border border-white/8 bg-[#0d1321] px-1.5 py-0.5 text-[10px] font-mono text-slate-300">Ctrl&nbsp;+&nbsp;,</kbd>
               </div>
               <div className="flex items-center justify-between text-xs text-slate-400 py-0.5">
                 <span>Command palette</span>
-                <kbd className="px-1.5 py-0.5 bg-slate-900 border border-slate-800 rounded text-[10px] font-mono text-slate-300">F1</kbd>
+                <kbd className="rounded border border-white/8 bg-[#0d1321] px-1.5 py-0.5 text-[10px] font-mono text-slate-300">F1</kbd>
               </div>
             </div>
           </div>
 
-          <div className="flex items-center gap-2 p-2 px-3 rounded-full bg-indigo-950/30 border border-indigo-500/10 text-[10px] text-indigo-300/80">
-            <Cpu className="w-3 h-3 text-indigo-400" />
+          <div className="flex items-center gap-2 rounded-full border border-[#18b6f6]/15 bg-[#18b6f6]/10 p-2 px-3 text-[10px] text-[#9adfff]">
+            <Cpu className="w-3 h-3 text-[#18b6f6]" />
             <span>Python 3 Virtual Environment Ready</span>
           </div>
         </div>
@@ -129,9 +129,9 @@ export const Editor = ({
   if (selectedFile.content === "BINARY_DB_FILE" || selectedFile.content === "BINARY_FILE") {
     const isDatabaseFile = selectedFile.content === "BINARY_DB_FILE";
     return (
-      <div className="w-full h-full bg-[#030712] flex flex-col items-center justify-center p-8 text-center select-none overflow-y-auto">
+      <div className="flex h-full w-full select-none flex-col items-center justify-center overflow-y-auto bg-[#09101c] p-8 text-center">
         <div className="max-w-md w-full flex flex-col items-center gap-6">
-          <div className="w-16 h-16 rounded-2xl bg-indigo-950/40 border border-indigo-500/20 flex items-center justify-center text-indigo-400 shadow-lg shadow-indigo-500/5">
+          <div className="flex h-16 w-16 items-center justify-center rounded-2xl border border-[#18b6f6]/20 bg-[#18b6f6]/10 text-[#18b6f6] shadow-lg shadow-[#18b6f6]/5">
             <Database className="w-8 h-8" />
           </div>
           <div className="flex flex-col items-center gap-2">

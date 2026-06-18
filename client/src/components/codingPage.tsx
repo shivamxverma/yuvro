@@ -719,8 +719,10 @@ const IDEPage = ({
   if (!loaded || !rootNodeId) return <WorkspaceLoadingScreen />;
 
   return (
-    <div className="flex flex-col w-screen h-screen bg-[#030712] text-slate-100 font-sans overflow-hidden">
+    <div className="flex h-screen w-screen overflow-hidden bg-[radial-gradient(circle_at_top,_rgba(24,182,246,0.12),_transparent_18%),#070b13] p-3 text-slate-100 font-sans">
+      <div className="flex h-full w-full flex-col overflow-hidden rounded-[1.5rem] border border-white/8 bg-[#09101c] shadow-[0_30px_80px_rgba(0,0,0,0.45)]">
       <TopNavbar
+        workspaceLabel={workspaceName || workspaceId}
         projectLabel={projectName || projectId}
         selectedFile={selectedFile}
         saveStatus={saveStatus}
@@ -734,9 +736,9 @@ const IDEPage = ({
         onTogglePreview={() => setBottomTab((t) => (t === "preview" ? "terminal" : "preview"))}
       />
 
-      <main className="flex-1 flex overflow-hidden relative">
+      <main className="relative flex flex-1 overflow-hidden">
         <>
-          <div style={{ width: sidebar.size, minWidth: sidebar.size }} className="shrink-0 flex">
+          <div style={{ width: sidebar.size, minWidth: sidebar.size }} className="flex shrink-0">
             <Sidebar
               files={fileStructure}
               selectedNodeId={selectedNodeId}
@@ -763,13 +765,13 @@ const IDEPage = ({
             onMouseDown={sidebar.onMouseDown}
             role="separator"
             aria-label="Resize sidebar explorer"
-            className="w-1 shrink-0 cursor-col-resize bg-transparent hover:bg-indigo-500 border-r border-slate-900 hover:border-indigo-500 hover:shadow-[0_0_8px_rgba(99,102,241,0.5)] transition-all duration-150"
+            className="w-1 shrink-0 cursor-col-resize border-r border-white/6 bg-transparent transition-all duration-150 hover:border-[#18b6f6] hover:bg-[#18b6f6]/50 hover:shadow-[0_0_10px_rgba(24,182,246,0.35)]"
             title="Drag to resize sidebar"
           />
         </>
 
-        <div className="flex-1 flex flex-col overflow-hidden min-w-0">
-          <div className="flex-1 overflow-hidden relative">
+        <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
+          <div className="relative flex-1 overflow-hidden">
             <Editor
               selectedFile={selectedFile}
               onSelect={(file) => {
@@ -800,6 +802,7 @@ const IDEPage = ({
       </main>
 
       <StatusBar projectLabel={projectName || projectId} selectedFile={selectedFile} />
+      </div>
     </div>
   );
 };
