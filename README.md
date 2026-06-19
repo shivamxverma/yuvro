@@ -365,6 +365,16 @@ make dev
 make build-runner-image
 ```
 
+## Demo Videos
+
+### Fullstack Demo
+
+[Watch the fullstack demo](https://drive.google.com/file/d/1Tb_NXvNCp8AcG48K_PUl4GhvSY1ZqiAY/view?usp=sharing)
+
+### C++ Interview Demo
+
+[Watch the C++ code demo](https://drive.google.com/file/d/19XZIiVnNxzomI1w9CmijUKNATNvm6YEy/view?usp=sharing)
+
 ## Short Summary
 
 Yuvro is a web IDE built around a clean split:
