@@ -410,7 +410,7 @@ const IDEPage = ({
   };
 
   useEffect(() => {
-    if (!loaded || !["cpp", "react"].includes(projectType) || runnerBaseUrl || runnerStarting) return;
+    if (!loaded || !projectType || runnerBaseUrl || runnerStarting) return;
     void ensureRunnerStarted();
   }, [loaded, projectType, runnerBaseUrl, runnerStarting]);
 

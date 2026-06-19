@@ -41,10 +41,10 @@ export function BottomPanel({
   workspaceId,
 }: BottomPanelProps) {
   const runnerStatusText = runnerStarting
-    ? "Starting runtime..."
+    ? "Starting workspace runtime..."
     : runnerError
       ? `Runtime unavailable: ${runnerError}`
-      : "Runtime has not been started. Click Run to start it.";
+      : "Workspace runtime is not ready yet.";
 
   return (
     <>

@@ -1,216 +1,378 @@
-# Yuvro Online IDE — Architecture & Setup Guide
+# Yuvro Online IDE
 
-Welcome to the **Yuvro Online IDE** project! This is a state-of-the-art, containerized web IDE platform modeled after Replit. It enables users to create python/web workspaces, edit files in real-time, execute commands in an interactive terminal, preview running web applications, and view SQLite databases with a built-in DB inspector.
+Yuvro is a browser-based coding workspace. A user signs in, creates a workspace, adds one or more projects, opens the code in the web IDE, and runs that project inside an isolated containerized environment.
 
----
-
-## System Architecture
-
-Yuvro is built as a distributed microservice system comprising a React-based frontend client, a centralized Docker/workspace orchestrator, a template initialization service, and containerized runner pods.
-
-### High-Level Components Flow
+This README explains the architecture in plain English and matches the current code in this repository.
 
 ![Yuvro IDE Architecture Diagram](./architecture.png)
 
----
+## Architecture In Plain English
 
-### Component Breakdown
+Think of Yuvro as five cooperating parts:
 
-#### 1. Frontend Client (`/client`)
-- **Tech Stack**: React, TypeScript, Tailwind CSS, Lucide icons, Monaco Editor / custom code viewer, `socket.io-client`.
-- **Purpose**: Provides a slick, dark-themed responsive IDE workspace. Includes:
-  - **File Explorer**: Handles filesystem trees, creations, and deletions.
-  - **Code Editor**: Monaco-powered editor with auto-save and syntax highlighting.
-  - **Interactive Terminal**: An xterm.js instance connecting to the running container's bash environment.
-  - **App Preview**: A sandboxed iframe showing live web applications running inside the container.
-  - **Database Viewer**: A modular panel under `client/src/components/ide/database/` supporting SQLite, PostgreSQL, and MySQL. Enables users to connect to existing databases or provision a local Docker DB container dynamically, scan tables, browse rows, inspect schemas, and execute read-only queries.
+1. `client/`
+   The React frontend. It shows the IDE UI, file tree, editor, terminal, preview panel, and database viewer.
+2. `init-service/`
+   The control-plane API for users, auth, workspace/project creation, file metadata, and content indexing.
+3. `orchestrator/`
+   The runtime manager. When a user opens a project, this service creates the Kubernetes resources needed to run it.
+4. `runner/`
+   The per-project workspace agent. It runs inside the project container and exposes terminal, filesystem, preview proxying, and DB browsing APIs.
+5. Supporting storage
+   PostgreSQL stores metadata, the filesystem stores live project files, and optional S3-backed content-addressed storage stores file blobs efficiently.
 
-#### 2. Orchestrator Service (`/orchestrator`)
-- **Tech Stack**: FastAPI, Uvicorn, Python, Docker SDK/Subprocess.
-- **Purpose**: Controls runner and database container lifecycles on the host machine.
-  - Receives request `/start` with a `replId`, establishes a project-specific Docker bridge network `yuvro-net-{replId}`, and spins up the runner container `yuvro-repl-{replId}`.
-  - Mounts a persistent directory on the host (`workspaces/{replId}`) directly to `/workspace` inside the container.
-  - Exposes `POST /db/start` to provision database containers (Postgres/MySQL) on demand inside the same project bridge network, mapping a persistent data directory (`workspaces/{replId}/.db_data`).
-  - Manages cascading container cleanups so that stopping a workspace container automatically purges the associated database container and bridge network.
-  - Runs a background garbage collector loop to prune orphaned database containers.
+## End-To-End Flow
 
-#### 3. Init-Service (`/init-service`)
-- **Tech Stack**: FastAPI, Uvicorn, Python, Boto3 (S3).
-- **Purpose**: Handles new project generation.
-  - Copies template workspace files from S3 (`yuvro/base/{language}`) to `yuvro/code/{replId}`.
-  - Supports cloning a public GitHub repository, packaging it, and uploading it to S3 as a new REPL backup.
+Here is the typical flow for one user:
 
-#### 4. Containerized Runner (`/runner`)
-- **Tech Stack**: FastAPI, Socket.io (ASGI), Pty, Python, SQLite3, PyMySQL, Psycopg2.
-- **Purpose**: Runs as the host workspace agent inside the Docker container.
-  - **Virtual Environment**: Automatically creates a `.venv` and installs dependencies listed in `requirements.txt` on thread startup.
-  - **PTY Terminal Manager**: Handles bidirectional terminal stream forwarding between client WebSockets and container `/bin/bash`.
-  - **File Syncing Manager**: Synchronizes filesystem operations (`fetchContent`, `createFile`, `deletePath`) over Socket.io.
-  - **Database Viewer API & Engine Adapters**: Integrates engine-specific connection adapters (`SQLiteAdapter`, `PostgresAdapter`, `MySQLAdapter`) to interact with databases. Exposes endpoints for connection listing, table list fetching, row retrieval, schema inspection, and custom query execution. Saves manual DB connection profiles to `/workspace/.yuvro/db_connections.json`.
+1. The user signs in through `init-service`.
+2. The user creates a workspace and project from a template or a GitHub repo.
+3. `init-service` writes project metadata into PostgreSQL and creates an indexed file tree.
+4. When the user opens the project, the frontend asks `orchestrator` to start it.
+5. `orchestrator` creates a runner Deployment, Service, and Ingress in Kubernetes.
+6. The runner pod mounts the project folder, starts the runtime agent, and prepares the project environment.
+7. The frontend connects to the runner for terminal access, file operations, app preview, and database inspection.
 
----
+## Main Components
 
-## Setup & Installation
+### Frontend: `client/`
 
-Follow these steps to configure and run the full stack locally.
+The frontend is a React + TypeScript app built with Vite. It handles:
 
-### Prerequisites
-Make sure you have the following installed on your machine:
-- **macOS** or **Linux**
-- **Docker Desktop** (must be active and running)
-- **Node.js** (v18+) & **npm**
-- **Python** (v3.10+)
+- Authentication screens
+- Workspace and project selection
+- File explorer and editor UI
+- Terminal session UI
+- App preview through runner proxy routes
+- Database viewer for SQLite, PostgreSQL, and MySQL connections
 
----
+The frontend is mostly a thin UI layer. The important state and lifecycle decisions live in the backend services.
 
-## Step-by-Step Setup Guide
+### Init Service: `init-service/`
 
-Here is how to set up each component of the stack individually, followed by how to run them easily using `make`.
+This service is the system of record for metadata.
 
-### 1. Frontend Client Setup (React)
-The frontend is built with React, Vite, and Tailwind CSS.
-```bash
-# Navigate to the client directory
-cd client
+It handles:
 
-# Install dependencies
-npm install
+- User signup, signin, logout, refresh, and OAuth
+- Workspace and project creation
+- Cloning GitHub repositories
+- Building and reading the indexed project tree
+- File and folder metadata updates
+- Optional content-addressed storage uploads to S3
 
-# (Optional) To start the frontend server individually
-npm run dev
-# Starts at http://localhost:5173
-```
+This is where the platform keeps track of who owns what, which project belongs to which workspace, and what files exist in each project.
 
-### 2. Init-Service Setup (FastAPI Backend)
-The template generation and repository cloning backend.
-```bash
-# Navigate to the init-service directory
-cd init-service
+### Orchestrator: `orchestrator/`
 
-# Create a Python virtual environment
-python3 -m venv .venv
+This service does not run user code itself. Its job is to ask Kubernetes to run user code safely and predictably.
 
-# Activate the virtual environment
-source .venv/bin/activate
+When `/start` is called, it creates or updates:
 
-# Install the required Python packages
-pip install -r requirements.txt
+- A runner `Deployment`
+- A runner `Service`
+- A runner `Ingress`
 
-# (Optional) To start the init-service individually
-uvicorn app.main:app --host 0.0.0.0 --port 3001 --reload
-# Starts at http://localhost:3001
-```
+When a project database is requested, it creates or updates:
 
-For OAuth locally, configure these init-service environment variables in `init-service/.env` before starting the backend:
-```env
-CLIENT_ORIGINS=http://localhost:5173
-PUBLIC_BASE_URL=http://localhost:3001
-AUTH_SECRET_KEY=replace-with-a-long-random-secret
-GOOGLE_CLIENT_ID=
-GOOGLE_CLIENT_SECRET=
-GITHUB_CLIENT_ID=
-GITHUB_CLIENT_SECRET=
-```
-Google callback URL: `http://localhost:3001/auth/google/callback`
-GitHub callback URL: `http://localhost:3001/auth/github/callback`
+- A database `Deployment`
+- A database `Service`
+- A database `Secret`
+- A database `PersistentVolumeClaim`
 
-### 3. Orchestrator Setup (FastAPI Backend)
-The container lifecycle manager which interfaces with Docker.
-```bash
-# Navigate to the orchestrator directory
-cd orchestrator
+This separation is important:
 
-# Create a Python virtual environment
-python3 -m venv .venv
+- `init-service` manages metadata and project definition.
+- `orchestrator` manages runtime infrastructure.
 
-# Activate the virtual environment
-source .venv/bin/activate
+### Runner: `runner/`
 
-# Install the required Python packages
-pip install -r requirements.txt
+The runner is the process inside each project container.
 
-# (Optional) To start the orchestrator individually
-uvicorn app.main:app --host 0.0.0.0 --port 3002 --reload
-# Starts at http://localhost:3002
-```
+It provides:
 
-### 4. Runner Container Image Setup
-The agent running inside the workspace Docker containers. You must build this image locally before launching a workspace.
-```bash
-# From the root directory, build the runner Docker image
-docker build -t yuvro-runner:latest ./runner
+- A terminal backed by a PTY
+- File read/write operations
+- Project startup hooks
+- App preview proxying
+- SQLite discovery inside the workspace
+- Read-only database browsing for SQLite, PostgreSQL, and MySQL
 
-# Alternatively, you can use the Makefile shortcut:
-make build-runner-image
-```
+For Python-family projects, it also creates a local virtual environment and installs dependencies in the background.
 
----
+## Schema Design
 
-## Running the Platform
+The metadata schema is intentionally simple. Instead of storing all file contents in PostgreSQL, the database stores the structure of the workspace and enough metadata to find and verify files.
 
-Once the individual setups/virtual environments are ready:
+### Core Tables
 
-### Option A: Run Concurrently (Recommended)
-You can start all three main servers (Frontend client, Orchestrator, Init-Service) concurrently with a single command from the root directory:
+#### `users`
+
+Stores the account record.
+
+- `id`
+- `email`
+- `name`
+- timestamps
+
+#### `auth_methods`
+
+Stores how a user signs in.
+
+- Local password auth
+- Google OAuth
+- GitHub OAuth
+
+This lets one user have multiple signin methods without duplicating the user record.
+
+#### `sessions`
+
+Stores refresh-token based login sessions.
+
+This supports:
+
+- Session listing
+- Logout from one device
+- Logout from all devices
+- Expiration tracking
+
+#### `workspaces`
+
+A workspace is the top-level container owned by a user.
+
+One user can have many workspaces.
+
+#### `projects`
+
+A workspace contains one or more projects.
+
+This is a good design choice because a workspace can group related apps, experiments, or services without creating a completely separate top-level container for each one.
+
+#### `nodes`
+
+This is the file tree table. It stores both folders and files in one self-referential structure.
+
+Important fields:
+
+- `project_id`
+- `parent_id`
+- `name`
+- `type` (`FILE` or `FOLDER`)
+- `content_hash`
+- `size_bytes`
+
+This design is effective because:
+
+- It models the whole tree with one table.
+- It supports recursive folder structures naturally.
+- It avoids a separate schema for folders and files.
+- It keeps database rows small because file bytes are not stored in Postgres.
+
+## Indexing And Why It Matters
+
+The indexing strategy is practical and tied to common queries.
+
+### Authentication indexes
+
+- `users.email` is unique and indexed.
+  Why: signin must find a user by email quickly and reject duplicates.
+- `auth_methods(provider, provider_user_id)` is unique.
+  Why: one Google or GitHub identity must map to exactly one auth record.
+- `auth_methods(user_id, provider)` is indexed.
+  Why: loading a user's available signin methods should be fast.
+- `sessions(user_id, status)` is indexed.
+  Why: fetching active sessions for "manage devices" is a common path.
+- `sessions(expires_at)` is indexed.
+  Why: expired session cleanup and time-based lookups are cheaper.
+
+### Workspace and project indexes
+
+- `workspaces.owner_user_id` is indexed.
+  Why: the product often asks "show me this user's workspaces".
+- `projects(workspace_id, name)` is unique.
+  Why: two projects in the same workspace should not have the same name.
+- `projects.workspace_id` is indexed.
+  Why: listing projects inside one workspace is a primary query.
+
+### File tree indexes
+
+- `nodes(project_id, parent_id, name)` is unique.
+  Why: one folder cannot contain duplicate child names.
+- `nodes(project_id, parent_id)` is indexed.
+  Why: expanding a folder is one of the hottest file tree operations.
+- `nodes(project_id, type)` is indexed.
+  Why: quickly filtering files vs folders inside a project is useful for scans and maintenance.
+
+In simple terms: the indexes are placed where users click most often. Sign in, load my workspaces, open this project, expand this folder.
+
+## Storage Design And Optimization
+
+Yuvro splits storage by responsibility.
+
+### 1. PostgreSQL stores metadata
+
+PostgreSQL stores small, structured, highly relational data:
+
+- users
+- sessions
+- workspaces
+- projects
+- file tree nodes
+
+This is the right place for ownership, relationships, uniqueness rules, and indexed lookups.
+
+### 2. The filesystem stores the live working copy
+
+Each project gets a directory under the workspace root. The runner works directly on these files because:
+
+- editors need normal file reads and writes
+- terminals expect a real filesystem
+- frameworks and package managers expect local files
+
+### 3. S3-backed CAS stores file blobs efficiently
+
+The repository uses content-addressed storage through `content_hash`.
+
+That means a file is identified by its SHA-256 hash, not by its original path.
+
+Why this helps:
+
+- identical files can be reused instead of stored many times
+- the database only needs to store a hash and size, not full file contents
+- templates can be indexed quickly using prebuilt manifests
+- storage cleanup becomes easier because unreferenced hashes can be garbage collected
+
+### 4. Template manifests reduce repeated work
+
+The template manifest files in `runner/template_manifests/` precompute:
+
+- directory paths
+- file paths
+- file content hashes
+- file sizes
+
+This avoids re-hashing every template file every time a new project is created from a known template.
+
+### 5. CAS garbage collection keeps object storage clean
+
+The repo includes:
+
+- `init-service/app/services/cas_gc_service.py`
+- `k8s/init-service-cas-gc-cronjob.yaml`
+
+The cleanup job scans live `nodes.content_hash` values and removes orphaned CAS objects after a grace period.
+
+That is a strong optimization because deduplicated object stores can grow quietly if they are never cleaned.
+
+### 6. Unnecessary files are intentionally ignored
+
+Both indexing and discovery skip heavy or noisy directories such as:
+
+- `.git`
+- `.venv`
+- `node_modules`
+- `__pycache__`
+- `.pytest_cache`
+
+Why: these folders are large, frequently regenerated, and usually not useful to show as core project metadata.
+
+## Kubernetes Usage: Container Orchestration
+
+This repo uses Kubernetes as the runtime control plane.
+
+### What Kubernetes is doing here
+
+For each active project, Kubernetes provides:
+
+- A runner pod that hosts the project agent
+- A stable Service name for internal traffic
+- An Ingress route for browser access
+- Optional per-project database pods
+- Persistent volumes for database storage
+- Secrets for database passwords
+
+### Why Kubernetes is a good fit
+
+#### 1. Isolation
+
+Each project runs in its own runtime unit instead of sharing one long-lived app process. That lowers the blast radius of crashes and dependency conflicts.
+
+#### 2. Consistent lifecycle management
+
+The orchestrator can declare the desired state and let Kubernetes create or update the resources.
+
+#### 3. Service discovery
+
+The database and runner services get predictable DNS names inside the cluster.
+
+#### 4. Persistent storage for databases
+
+Postgres/MySQL project databases use PVCs, so data can survive container restarts.
+
+#### 5. Health-aware startup
+
+The database Deployments include readiness probes, which means the platform waits for the database to be usable instead of assuming it is ready immediately.
+
+### How the runner is exposed
+
+The orchestrator creates an Ingress per project using a host name derived from the project ID. That gives each running project its own URL path into the cluster-managed runner service.
+
+### Important current tradeoff
+
+The runner workspace is mounted using `hostPath`. That is practical for local development and single-node setups such as `kind`, but it is not the ideal final storage design for a multi-node production cluster. A shared network volume or object-backed workspace sync layer would be safer at larger scale.
+
+## Why This Architecture Makes Sense
+
+In plain terms, the design separates concerns well:
+
+- `client` handles user interaction
+- `init-service` owns metadata and project definition
+- `orchestrator` owns infrastructure creation
+- `runner` owns per-project execution
+- PostgreSQL owns relationships and indexing
+- filesystem and S3 own bulk file storage
+- Kubernetes owns container orchestration
+
+That split keeps the system easier to reason about than putting auth, metadata, filesystem logic, and container runtime logic into one service.
+
+## Repository Map
+
+- [client](/Users/shivamverma/Desktop/yuvro-assignment/client)
+- [init-service](/Users/shivamverma/Desktop/yuvro-assignment/init-service)
+- [orchestrator](/Users/shivamverma/Desktop/yuvro-assignment/orchestrator)
+- [runner](/Users/shivamverma/Desktop/yuvro-assignment/runner)
+- [k8s](/Users/shivamverma/Desktop/yuvro-assignment/k8s)
+- [docs/schema.md](/Users/shivamverma/Desktop/yuvro-assignment/docs/schema.md)
+
+## Local Development Notes
+
+### Core ports
+
+- Frontend: `5173`
+- Init service: `3001`
+- Orchestrator: `3002`
+- Kubernetes ingress default in manifests: `8080`
+
+### Start the main local services
+
 ```bash
 make dev
 ```
-This runs:
-- **Init-Service** on [http://localhost:3001](http://localhost:3001)
-- **Orchestrator** on [http://localhost:3002](http://localhost:3002)
-- **Frontend Client** on [http://localhost:5173](http://localhost:5173)
 
-### Option B: Run Manually (Separate Terminals)
-Open three terminal tabs and start each service manually using the commands detailed in sections 1, 2, and 3 above.
+### Build the runner image
 
----
-
-### Step 5: Accessing the IDE
-
-Open your web browser and navigate to:
-```url
-http://localhost:5173/coding/?replId=pleasecomputercomputer
+```bash
+make build-runner-image
 ```
-Replace `pleasecomputercomputer` with any identifier you want to use for your workspace.
 
----
+## Short Summary
 
-## Testing the Database Viewer
+Yuvro is a web IDE built around a clean split:
 
-You can test SQLite databases directly inside the workspace, or dynamically provision local PostgreSQL and MySQL Docker containers:
+- PostgreSQL tracks metadata and relationships.
+- The filesystem holds the live project copy.
+- S3 CAS improves storage efficiency.
+- The runner executes project-level actions.
+- Kubernetes starts and exposes isolated project environments.
 
-### 1. SQLite Database Testing
-1. **Initialize a Test Database**:
-   Create a test database inside the workspace directory (`workspaces/pleasecomputercomputer/test.db`). You can run our helper script to set up sample tables (`users` and `tasks`) automatically:
-   ```bash
-   # From the root directory:
-   cd workspaces/pleasecomputercomputer
-   python3 create_db.py
-   ```
-2. **Connect in the IDE**:
-   - Open the IDE workspace in your browser: `http://localhost:5173/coding/?replId=pleasecomputercomputer`.
-   - Click on the **Database Viewer** tab at the bottom.
-   - Click the **Scan Workspace** button or the Refresh icon to discover the new database.
-   - Select `test.db` from the dropdown list.
-
-### 2. Postgres / MySQL Docker Container Provisioning
-1. **Open the DB Connection Modal**:
-   - Click the **"+" (Add Connection)** button on the Database Viewer sidebar.
-2. **Provision a Local Container**:
-   - Choose **Postgres** or **MySQL** as the Engine.
-   - Click **"Provision local Docker Container"**.
-   - The orchestrator will spin up the database container on a secure project network bridge, configure it, and register the profile with the runner.
-   - Once ready, the modal will close automatically, the databases dropdown will focus the newly provisioned connection, and you can begin browsing tables, schema, or running queries!
-
----
-
-> [!NOTE]
-> All custom queries in the Database Viewer are run in read-only mode. Destructive actions (`INSERT`, `UPDATE`, `DELETE`, `DROP`, `CREATE`, etc.) are blocked at the runner API level to prevent unintended schema modifications or data loss inside the browser console.
-
----
-
-## Demo Video
-
-Below is a screen recording demonstrating the platform's workspace initialization, terminal execution, and the interactive SQLite database viewer:
-
-[Watch the Demo Video on Google Drive](https://drive.google.com/file/d/1--Tg6yNgQp1A2IOS2h6R4wI5CgFyHUav/view?usp=sharing)
+If you want to understand the system quickly, start with `init-service` for metadata, `orchestrator` for runtime creation, and `runner` for the actual workspace behavior.

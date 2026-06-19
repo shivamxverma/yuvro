@@ -23,16 +23,21 @@ def init_ws(sio: socketio.AsyncServer):
     @sio.event
     async def disconnect(sid):
         print(f"[WS Disconnected] Session: {sid}")
-        terminal_manager.clear(sid)
+        terminal_manager.detach_client(sid)
 
     @sio.on("requestTerminal")
     async def on_request_terminal(sid):
         log_to_file(f"[WS requestTerminal] Received for Sid: {sid}")
+        session = await sio.get_session(sid)
+        repl_id = session.get("repl_id", "")
+        if not repl_id:
+            await sio.emit("terminal", {"data": "Project session is missing.\r\n"}, to=sid)
+            return
 
         async def on_terminal_output(decoded_output: str):
             await sio.emit("terminal", {"data": decoded_output}, to=sid)
 
-        terminal_manager.create_pty(sid, on_terminal_output)
+        terminal_manager.attach_client(repl_id, sid, on_terminal_output)
         await sio.emit("terminalReady", {"ready": True}, to=sid)
 
     @sio.on("terminalData")

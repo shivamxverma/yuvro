@@ -124,7 +124,11 @@ export function DatabaseViewer({ runnerBaseUrl, projectId, workspaceId }: Databa
       }
     } catch (err: any) {
       console.error(err);
-      setError(`Failed to read tables from connection.`);
+      const detail =
+        typeof err.response?.data === "string"
+          ? err.response.data
+          : err.response?.data?.detail || err.message || "Failed to read tables from connection.";
+      setError(detail);
       setTables([]);
       setSelectedTable("");
     } finally {
@@ -157,7 +161,11 @@ export function DatabaseViewer({ runnerBaseUrl, projectId, workspaceId }: Databa
       setTotalRows(res.data.total || 0);
     } catch (err: any) {
       console.error(err);
-      setError(`Failed to fetch rows for table: ${selectedTable}`);
+      const detail =
+        typeof err.response?.data === "string"
+          ? err.response.data
+          : err.response?.data?.detail || err.message || `Failed to fetch rows for table: ${selectedTable}`;
+      setError(detail);
       setRows([]);
       setColumns([]);
       setTotalRows(0);
@@ -181,7 +189,11 @@ export function DatabaseViewer({ runnerBaseUrl, projectId, workspaceId }: Databa
       setSchema(res.data.schema || []);
     } catch (err: any) {
       console.error(err);
-      setError(`Failed to fetch schema for table: ${selectedTable}`);
+      const detail =
+        typeof err.response?.data === "string"
+          ? err.response.data
+          : err.response?.data?.detail || err.message || `Failed to fetch schema for table: ${selectedTable}`;
+      setError(detail);
       setSchema([]);
     } finally {
       setLoading(false);

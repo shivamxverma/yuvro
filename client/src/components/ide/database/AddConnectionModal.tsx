@@ -20,12 +20,18 @@ export function AddConnectionModal({
   runnerBaseUrl,
   onSaveConnectionSuccess,
 }: AddConnectionModalProps) {
+  const defaultHostForType = (type: "postgres" | "mysql" | "sqlite") => {
+    if (type === "postgres") return `postgres-${projectId}`;
+    if (type === "mysql") return `mysql-${projectId}`;
+    return "";
+  };
+
   const [dbType, setDbType] = useState<"postgres" | "mysql" | "sqlite">("postgres");
   const [connName, setConnName] = useState("");
-  const [hostVal, setHostVal] = useState("yuvro-db-" + projectId);
+  const [hostVal, setHostVal] = useState(defaultHostForType("postgres"));
   const [portVal, setPortVal] = useState("5432");
   const [userVal, setUserVal] = useState("postgres");
-  const [passVal, setPassVal] = useState("secret");
+  const [passVal, setPassVal] = useState("");
   const [dbnameVal, setDbnameVal] = useState("yuvro_db");
   const [sqlitePathVal, setSqlitePathVal] = useState("");
   const [loading, setLoading] = useState(false);
@@ -41,11 +47,13 @@ export function AddConnectionModal({
     if (type === "postgres") {
       setPortVal("5432");
       setUserVal("postgres");
-      setHostVal("yuvro-db-" + projectId);
+      setHostVal(defaultHostForType(type));
+      setPassVal("");
     } else if (type === "mysql") {
       setPortVal("3306");
       setUserVal("root");
-      setHostVal("yuvro-db-" + projectId);
+      setHostVal(defaultHostForType(type));
+      setPassVal("");
     }
   };
 
@@ -237,6 +245,11 @@ export function AddConnectionModal({
                   />
                 </div>
               </div>
+
+              <p className="text-[9px] text-slate-500 -mt-1">
+                For local Yuvro databases, prefer the provision button below. Manual profiles must match the
+                actual Kubernetes service name and password.
+              </p>
 
               <div className="grid grid-cols-2 gap-2">
                 <div>

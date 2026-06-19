@@ -54,6 +54,7 @@ async def get_port(repl_id: str, container_port: int):
 
 async def proxy(repl_id: str, path: str, request: Request, container_port: int):
     target_url = f"http://127.0.0.1:{container_port}/{path}"
+    proxy_prefix = f"/proxy/{repl_id}/{container_port}"
 
     query = request.url.query
     if query:
@@ -71,10 +72,43 @@ async def proxy(repl_id: str, path: str, request: Request, container_port: int):
                 headers=headers,
                 content=body,
             )
+            content = resp.content
+            content_type = resp.headers.get("content-type", "").lower()
+
+            if content_type.startswith("text/html"):
+                text = resp.text
+                text = text.replace('src="/', f'src="{proxy_prefix}/')
+                text = text.replace('href="/', f'href="{proxy_prefix}/')
+                text = text.replace('import "/', f'import "{proxy_prefix}/')
+                content = text.encode("utf-8")
+            elif "javascript" in content_type:
+                text = resp.text
+                text = text.replace(' from "/', f' from "{proxy_prefix}/')
+                text = text.replace('import "/', f'import "{proxy_prefix}/')
+                text = text.replace('import("/', f'import("{proxy_prefix}/')
+                content = text.encode("utf-8")
+
+            response_headers = {
+                key: value
+                for key, value in resp.headers.items()
+                if key.lower()
+                not in {
+                    "connection",
+                    "content-encoding",
+                    "content-length",
+                    "keep-alive",
+                    "proxy-authenticate",
+                    "proxy-authorization",
+                    "te",
+                    "trailer",
+                    "transfer-encoding",
+                    "upgrade",
+                }
+            }
             return Response(
-                content=resp.content,
+                content=content,
                 status_code=resp.status_code,
-                headers=dict(resp.headers),
+                headers=response_headers,
             )
         except httpx.ConnectError:
             return Response(
