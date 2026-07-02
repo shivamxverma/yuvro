@@ -2,11 +2,11 @@ import crypto from "crypto";
 import axios from "axios";
 import { OAuth2Client } from "google-auth-library";
 import { eq, and, desc, update } from "drizzle-orm";
-import { db } from "../loaders/postgres";
+import { db } from "../../loaders/postgres";
 import { users as usersTable, authMethods as authMethodsTable, sessions as sessionsTable } from "db-schema";
-import config from "../config";
-import ApiError from "../utils/ApiError";
-import { encodeSignedPayload, decodeSignedPayload } from "../shared/middleware";
+import config from "../../config";
+import ApiError from "../../utils/ApiError";
+import { encodeSignedPayload, decodeSignedPayload } from "../../shared/middleware";
 
 const PASSWORD_PROVIDER = "password";
 const GOOGLE_PROVIDER = "google";
@@ -613,7 +613,7 @@ async function authenticateOauthUser(provider: string, providerUserId: string, e
   const now = new Date();
   const userId = crypto.randomUUID();
   const authId = crypto.randomUUID();
-  
+
   const resolvedName = name && name.trim() ? name.trim() : await generateUniqueName(normalizedEmail, null);
 
   await db.transaction(async (tx) => {
@@ -655,7 +655,7 @@ export async function authenticateGoogleUser(code: string): Promise<any> {
 export async function authenticateGithubUser(code: string): Promise<any> {
   const accessToken = await exchangeGithubCode(code);
   const githubUser = await fetchGithubUser(accessToken);
-  
+
   const githubUserId = githubUser.id;
   const email = githubUser.email;
   const name = githubUser.name;

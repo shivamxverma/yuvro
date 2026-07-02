@@ -1,5 +1,5 @@
 import { Response } from "express";
-import * as workspaceService from "../../services/workspace_service";
+import * as workspaceService from "./workspace-service";
 import asyncHandler from "../../utils/asyncHandler";
 import ApiResponse from "../../utils/ApiResponse";
 

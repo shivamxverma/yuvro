@@ -1,17 +1,17 @@
 import fs from "fs";
 import path from "path";
 import { eq, and } from "drizzle-orm";
-import { db } from "../loaders/postgres";
+import { db } from "../../loaders/postgres";
 import { nodes as nodesTable } from "db-schema";
-import ApiError from "../utils/ApiError";
-import { hashContent, hashFile, uploadFileIfMissing, uploadIfMissing } from "./cas_service";
+import ApiError from "../../utils/ApiError";
+import { hashContent, hashFile, uploadFileIfMissing, uploadIfMissing } from "../../shared/cas-service";
 import {
   getNode,
   projectDiskPath,
   relativePathForNode,
   serializeNode,
   validateName,
-} from "./workspace_service";
+} from "../project/workspace-service";
 
 const LIVE_SYNC_IGNORE_NAMES = new Set([".git", ".venv", "venv", "__pycache__", ".pytest_cache", "node_modules"]);
 
@@ -72,7 +72,7 @@ async function syncFolderChildren(tx: any, parent: any): Promise<void> {
   const discoveredEntries = diskEntries.filter((entry) => !LIVE_SYNC_IGNORE_NAMES.has(entry.name));
 
   const discoveredNames = new Set(discoveredEntries.map((e) => e.name));
-  
+
   // 1. Delete DB nodes not found on disk
   for (const childName of Object.keys(dbChildrenMap)) {
     if (!discoveredNames.has(childName)) {
@@ -176,10 +176,10 @@ export async function readContent(ownerUserId: string, nodeId: string): Promise<
   return await db.transaction(async (tx) => {
     const node = await getNode(nodeId, ownerUserId, tx);
     assertFile(node);
-    
+
     const absPath = await nodeAbsPath(tx, node);
     let content = "";
-    
+
     try {
       // Check if file is text or binary
       const buf = fs.readFileSync(absPath);
@@ -206,7 +206,7 @@ export async function createNode(ownerUserId: string, parentId: string, name: st
   return await db.transaction(async (tx) => {
     const parent = await getNode(parentId, ownerUserId, tx);
     assertFolder(parent);
-    
+
     const nodeName = validateName(name);
     const now = new Date();
     const nodeId = crypto.randomUUID();

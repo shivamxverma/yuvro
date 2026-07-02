@@ -1,2 +1,1 @@
-export * from "./schema-auth";
-export * from "./schema-project";
+export * from "./schema";

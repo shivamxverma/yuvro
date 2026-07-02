@@ -1,5 +1,5 @@
 import { Response } from "express";
-import * as nodeService from "../../services/node_service";
+import * as nodeService from "./node-service";
 import asyncHandler from "../../utils/asyncHandler";
 import ApiResponse from "../../utils/ApiResponse";
 

@@ -1,8 +1,8 @@
 import { ListObjectsV2Command, DeleteObjectsCommand } from "@aws-sdk/client-s3";
-import { s3Client } from "./s3_service";
-import config from "../config";
-import logger from "../loaders/logger";
-import { db } from "../loaders/postgres";
+import { s3Client } from "../../shared/s3-service";
+import config from "../../config";
+import logger from "../../loaders/logger";
+import { db } from "../../loaders/postgres";
 import { nodes as nodesTable } from "db-schema";
 import { isNotNull } from "drizzle-orm";
 
@@ -173,7 +173,7 @@ export async function runCasGcOnce(
 
 export function startCasGcLoop(): void {
   const intervalMs = Math.max(60 * 1000, config.CAS_GC_INTERVAL_MINUTES * 60 * 1000);
-  
+
   const loop = async () => {
     try {
       await runCasGcOnce();

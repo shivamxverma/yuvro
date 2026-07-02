@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import * as casGcService from "../../services/cas_gc_service";
+import * as casGcService from "./cas-gc-service";
 import asyncHandler from "../../utils/asyncHandler";
 import ApiResponse from "../../utils/ApiResponse";
 

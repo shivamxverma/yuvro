@@ -1,13 +1,14 @@
 import path from "path";
 import fs from "fs";
+import os from "os";
 import { exec } from "child_process";
 import { promisify } from "util";
 import { eq, and, desc, isNull } from "drizzle-orm";
-import { db } from "../loaders/postgres";
-import { workspaces as workspacesTable, projects as projectsTable, nodes as nodesTable, users as usersTable } from "db-schema";
-import config from "../config";
-import ApiError from "../utils/ApiError";
-import { hashFile, uploadFileIfMissing } from "./cas_service";
+import { db } from "../../loaders/postgres";
+import { workspaces as workspacesTable, projects as projectsTable, nodes as nodesTable } from "db-schema";
+import config from "../../config";
+import ApiError from "../../utils/ApiError";
+import { hashFile, uploadFileIfMissing } from "../../shared/cas-service";
 import { fileURLToPath } from "url";
 
 const execAsync = promisify(exec);
@@ -15,7 +16,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const INITIAL_INDEX_IGNORE_NAMES = new Set([".git", ".venv", "venv", "__pycache__", "node_modules", ".pytest_cache"]);
-const BASE_DIR = path.resolve(__dirname, "../../..");
+const BASE_DIR = path.resolve(__dirname, "../../../..");
 export const WORKSPACES_DIR = process.env.WORKSPACES_DIR || path.join(BASE_DIR, "workspaces");
 export const TEMPLATES_DIR = process.env.TEMPLATES_DIR || path.join(BASE_DIR, "runner", "templates");
 export const TEMPLATE_MANIFESTS_DIR = process.env.TEMPLATE_MANIFESTS_DIR || path.join(BASE_DIR, "runner", "template_manifests");
@@ -88,7 +89,7 @@ export async function nodePath(node: any, tx: any = db): Promise<string> {
       .select()
       .from(nodesTable)
       .where(eq(nodesTable.id, current.parentId));
-    
+
     const parent = parents[0];
     if (!parent) break;
     current = parent;
@@ -207,7 +208,7 @@ async function indexTree(tx: any, project: any, rootNode: any, projectDir: strin
     if (relDir) {
       const parentRel = path.dirname(relDir).replace(/\\/g, "/");
       const parentRelNormalized = parentRel === "." ? "" : parentRel;
-      
+
       const nodeId = crypto.randomUUID();
       const node = {
         id: nodeId,
@@ -350,7 +351,7 @@ async function cloneRepository(githubUrl: string, targetDir: string): Promise<vo
   try {
     await execAsync(`git clone --depth 1 "${githubUrl}" "${cloneTarget}"`);
     fs.mkdirSync(targetDir, { recursive: true });
-    
+
     // Copy excluding .git
     fs.cpSync(cloneTarget, targetDir, {
       recursive: true,
@@ -377,7 +378,7 @@ async function bootstrapProject(
   const now = new Date();
   const normalizedName = validateName(projectName);
   const projectId = crypto.randomUUID();
-  
+
   const project = {
     id: projectId,
     workspaceId: workspace.id,

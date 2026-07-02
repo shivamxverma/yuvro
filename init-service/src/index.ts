@@ -3,7 +3,7 @@ import loaders from "./loaders";
 import logger from "./loaders/logger";
 import config from "./config";
 import { closeDatabaseConnection } from "./loaders/postgres";
-import { startCasGcLoop } from "./services/cas_gc_service";
+import { startCasGcLoop } from "./api/admin/cas-gc-service";
 
 async function startServer() {
   const app = express();

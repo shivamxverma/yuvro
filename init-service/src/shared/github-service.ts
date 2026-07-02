@@ -4,7 +4,7 @@ import fs from "fs";
 import { exec } from "child_process";
 import { promisify } from "util";
 import { PutObjectCommand } from "@aws-sdk/client-s3";
-import { s3Client } from "./s3_service";
+import { s3Client } from "./s3-service";
 import config from "../config";
 import logger from "../loaders/logger";
 
