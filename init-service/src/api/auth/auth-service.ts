@@ -1,7 +1,7 @@
 import crypto from "crypto";
 import axios from "axios";
 import { OAuth2Client } from "google-auth-library";
-import { eq, and, desc, update } from "drizzle-orm";
+import { eq, and, desc } from "drizzle-orm";
 import { db } from "../../loaders/postgres";
 import { users as usersTable, authMethods as authMethodsTable, sessions as sessionsTable } from "db-schema";
 import config from "../../config";

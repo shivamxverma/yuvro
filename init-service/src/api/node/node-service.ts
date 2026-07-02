@@ -1,6 +1,6 @@
 import fs from "fs";
 import path from "path";
-import { eq, and } from "drizzle-orm";
+import { eq, and, desc } from "drizzle-orm";
 import { db } from "../../loaders/postgres";
 import { nodes as nodesTable } from "db-schema";
 import ApiError from "../../utils/ApiError";

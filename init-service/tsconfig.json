@@ -2,7 +2,9 @@
   "compilerOptions": {
     "baseUrl": ".",
     "paths": {
-      "db-schema": ["../db-schema/src"]
+      "db-schema": ["../db-schema/src"],
+      "drizzle-orm": ["node_modules/drizzle-orm"],
+      "drizzle-orm/*": ["node_modules/drizzle-orm/*"]
     },
     "target": "es2022",
     "allowSyntheticDefaultImports": true,
