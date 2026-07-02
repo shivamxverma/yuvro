@@ -16,7 +16,7 @@ function GithubMark() {
 
 export function AuthPage() {
   const { signIn, signUp } = useAuth();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [mode, setMode] = useState<Mode>("signin");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -34,9 +34,16 @@ export function AuthPage() {
         ? "OAuth sign-in could not be completed."
         : "";
 
+  const clearAuthError = () => {
+    if (searchParams.has("authError")) {
+      setSearchParams({}, { replace: true });
+    }
+  };
+
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
     setError("");
+    clearAuthError();
     setLoading(true);
     try {
       if (isSignup) {
@@ -82,6 +89,7 @@ export function AuthPage() {
               onClick={() => {
                 setMode(value);
                 setError("");
+                clearAuthError();
               }}
               className={`rounded-md py-1.5 text-xs font-medium transition-all ${
                 mode === value
@@ -104,7 +112,10 @@ export function AuthPage() {
                 <UserRound className="absolute left-3.5 h-4 w-4 text-neutral-400" />
                 <input
                   value={name}
-                  onChange={(e) => setName(e.target.value)}
+                  onChange={(e) => {
+                    setName(e.target.value);
+                    clearAuthError();
+                  }}
                   placeholder="Ada Lovelace"
                   required
                   className="w-full rounded-xl border border-neutral-200 bg-white py-2.5 pl-10 pr-4 text-sm text-neutral-900 outline-none placeholder:text-neutral-400 focus:border-neutral-900 focus:ring-1 focus:ring-neutral-900 transition-all"
@@ -122,7 +133,10 @@ export function AuthPage() {
               <input
                 type="email"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={(e) => {
+                  setEmail(e.target.value);
+                  clearAuthError();
+                }}
                 placeholder="student@example.com"
                 autoComplete="email"
                 required
@@ -140,7 +154,10 @@ export function AuthPage() {
               <input
                 type="password"
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                onChange={(e) => {
+                  setPassword(e.target.value);
+                  clearAuthError();
+                }}
                 placeholder="At least 8 characters"
                 autoComplete={isSignup ? "new-password" : "current-password"}
                 required

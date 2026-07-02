@@ -3,6 +3,7 @@ import * as authService from "./auth-service";
 import asyncHandler from "../../utils/asyncHandler";
 import ApiResponse from "../../utils/ApiResponse";
 import config from "../../config";
+import logger from "../../loaders/logger";
 
 export const signUp = asyncHandler(async (req: Request, res: Response) => {
   const { email, password, name } = req.body;
@@ -79,6 +80,7 @@ export const googleAuthCallback = asyncHandler(async (req: Request, res: Respons
     await authService.createSession(res, user.id, req);
     res.redirect(302, `${callbackOrigin}/oauth-success`);
   } catch (error: any) {
+    logger.error("Google Auth Callback Handler failed:", error);
     let errorCode = "oauth_failed";
     if (error.message === "ACCOUNT_EXISTS_WITH_DIFFERENT_SIGNIN_METHOD") {
       errorCode = "account_exists_different_signin_method";
@@ -110,6 +112,7 @@ export const githubAuthCallback = asyncHandler(async (req: Request, res: Respons
     await authService.createSession(res, user.id, req);
     res.redirect(302, `${callbackOrigin}/oauth-success`);
   } catch (error: any) {
+    logger.error("GitHub Auth Callback Handler failed:", error);
     let errorCode = "oauth_failed";
     if (error.message === "ACCOUNT_EXISTS_WITH_DIFFERENT_SIGNIN_METHOD") {
       errorCode = "account_exists_different_signin_method";

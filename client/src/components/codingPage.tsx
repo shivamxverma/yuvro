@@ -196,7 +196,8 @@ const IDEPage = ({
       throw new Error("Failed to load folder contents.");
     }
 
-    const payload = (await response.json()) as { nodes: RemoteFile[] };
+    const json = await response.json();
+    const payload = json.data as { nodes: RemoteFile[] };
     mergeChildren(nodeId, payload.nodes);
     setLoadedDirectoryIds((prev) => {
       const next = new Set(prev);
@@ -213,7 +214,8 @@ const IDEPage = ({
     if (!projectRes.ok) {
       throw new Error("Failed to load project.");
     }
-    const detail = (await projectRes.json()) as ProjectDetail;
+    const json = await projectRes.json();
+    const detail = json.data as ProjectDetail;
     setProjectName(detail.project.name);
     setProjectType(detail.project.type);
     setRootNodeId(detail.rootNode.id);
@@ -239,7 +241,8 @@ const IDEPage = ({
         throw new Error("Failed to load workspace projects.");
       }
 
-      const payload = (await response.json()) as { workspaces: WorkspaceSummary[] };
+      const json = await response.json();
+      const payload = json.data as { workspaces: WorkspaceSummary[] };
       const activeWorkspace = payload.workspaces.find((workspace) => workspace.id === workspaceId);
       if (!activeWorkspace) {
         throw new Error("Workspace not found.");
@@ -301,7 +304,8 @@ const IDEPage = ({
     if (!response.ok) {
       return;
     }
-    const payload = await response.json();
+    const json = await response.json();
+    const payload = json.data as { node: NodePayload; content: string };
     setSelectedFile(toEditorFile(payload.node, payload.content));
   };
 

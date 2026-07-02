@@ -16,6 +16,7 @@ export type AuthUser = {
 type AuthContextValue = {
   user: AuthUser | null;
   loading: boolean;
+  setUser: (user: AuthUser | null) => void;
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string, name?: string) => Promise<void>;
   signOut: () => Promise<void>;
@@ -24,16 +25,19 @@ type AuthContextValue = {
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
-async function parseJson<T>(response: Response): Promise<T> {
+// The backend wraps all responses as: { statusCode, message, data: T, success }
+type ApiBody<T> = { statusCode: number; message: string; data: T; success: boolean };
+
+async function parseJson<T>(response: Response): Promise<ApiBody<T>> {
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) {
     const detail =
-      typeof payload === "object" && payload && "detail" in payload
-        ? String((payload as { detail?: string }).detail)
+      typeof payload === "object" && payload && "message" in payload
+        ? String((payload as { message?: string }).message)
         : "Request failed.";
     throw new Error(detail);
   }
-  return payload as T;
+  return payload as ApiBody<T>;
 }
 
 async function fetchMe(): Promise<AuthUser | null> {
@@ -44,37 +48,50 @@ async function fetchMe(): Promise<AuthUser | null> {
     return null;
   }
   const payload = await parseJson<{ user: AuthUser }>(response);
-  return payload.user;
+  return payload.data.user;
 }
+
+let globalActiveRefresh: Promise<AuthUser | null> | null = null;
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
 
   const refreshUser = async (): Promise<AuthUser | null> => {
-    try {
-      const user = await fetchMe();
-      if (user) {
-        setUser(user);
-        return user;
-      }
+    if (globalActiveRefresh) {
+      return globalActiveRefresh;
+    }
 
-      const refreshResponse = await fetch(`${INIT_SERVICE_URL}/auth/refresh`, {
-        method: "POST",
-        credentials: "include",
-      });
-      if (!refreshResponse.ok) {
+    const runRefresh = async (): Promise<AuthUser | null> => {
+      try {
+        const user = await fetchMe();
+        if (user) {
+          setUser(user);
+          return user;
+        }
+
+        const refreshResponse = await fetch(`${INIT_SERVICE_URL}/auth/refresh`, {
+          method: "POST",
+          credentials: "include",
+        });
+        if (!refreshResponse.ok) {
+          setUser(null);
+          return null;
+        }
+
+        const refreshedUser = await fetchMe();
+        setUser(refreshedUser);
+        return refreshedUser;
+      } catch {
         setUser(null);
         return null;
+      } finally {
+        globalActiveRefresh = null;
       }
+    };
 
-      const refreshedUser = await fetchMe();
-      setUser(refreshedUser);
-      return refreshedUser;
-    } catch {
-      setUser(null);
-      return null;
-    }
+    globalActiveRefresh = runRefresh();
+    return globalActiveRefresh;
   };
 
   useEffect(() => {
@@ -89,7 +106,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       body: JSON.stringify({ email, password }),
     });
     const payload = await parseJson<{ user: AuthUser }>(response);
-    setUser(payload.user);
+    setUser(payload.data.user);
   };
 
   const signUp = async (email: string, password: string, name?: string) => {
@@ -100,7 +117,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       body: JSON.stringify({ email, password, name }),
     });
     const payload = await parseJson<{ user: AuthUser }>(response);
-    setUser(payload.user);
+    setUser(payload.data.user);
   };
 
   const signOut = async () => {
@@ -112,7 +129,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, signIn, signUp, signOut, refreshUser }}>
+    <AuthContext.Provider value={{ user, loading, setUser, signIn, signUp, signOut, refreshUser }}>
       {children}
     </AuthContext.Provider>
   );

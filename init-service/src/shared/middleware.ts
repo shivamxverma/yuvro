@@ -7,6 +7,7 @@ import asyncHandler from "../utils/asyncHandler";
 import { db } from "../loaders/postgres";
 import { users as usersTable, sessions as sessionsTable } from "db-schema";
 import { eq } from "drizzle-orm";
+import logger from "../loaders/logger";
 
 // ─── Custom Signed Token Utilities (to match Python FastAPI) ──────────────────
 export function sign(value: string, secret: string): string {
@@ -72,11 +73,13 @@ export const validate = (location: "query" | "body" | "params", schema: yup.Obje
 export const verifyJWT = asyncHandler(async (req: any, res: Response, next: NextFunction) => {
   const token = req.cookies?.[config.ACCESS_COOKIE_NAME];
   if (!token) {
+    logger.warn("JWT Verification failed: yuvro_access cookie missing.");
     throw new ApiError("Authentication required.", 401);
   }
 
   const payload = decodeSignedPayload(token, "access", config.AUTH_SECRET_KEY);
   if (!payload) {
+    logger.warn("JWT Verification failed: invalid or expired signed payload.");
     throw new ApiError("Authentication required.", 401);
   }
 
@@ -84,6 +87,7 @@ export const verifyJWT = asyncHandler(async (req: any, res: Response, next: Next
   const sessionId = payload.sid;
 
   if (typeof userId !== "string" || typeof sessionId !== "string") {
+    logger.warn("JWT Verification failed: sub or sid is missing from payload.");
     throw new ApiError("Authentication required.", 401);
   }
 
@@ -96,12 +100,20 @@ export const verifyJWT = asyncHandler(async (req: any, res: Response, next: Next
     .where(eq(sessionsTable.id, sessionId));
 
   const sessionRow = sessionRows[0];
-  if (
-    !sessionRow ||
-    sessionRow.userId !== userId ||
-    sessionRow.status !== "ACTIVE" ||
-    sessionRow.expiresAt <= now
-  ) {
+  if (!sessionRow) {
+    logger.warn(`JWT Verification failed: session ${sessionId} not found in DB.`);
+    throw new ApiError("Authentication required.", 401);
+  }
+  if (sessionRow.userId !== userId) {
+    logger.warn(`JWT Verification failed: session user ${sessionRow.userId} does not match token sub ${userId}.`);
+    throw new ApiError("Authentication required.", 401);
+  }
+  if (sessionRow.status !== "ACTIVE") {
+    logger.warn(`JWT Verification failed: session status is ${sessionRow.status}, expected ACTIVE.`);
+    throw new ApiError("Authentication required.", 401);
+  }
+  if (sessionRow.expiresAt <= now) {
+    logger.warn(`JWT Verification failed: session has expired (expires at ${sessionRow.expiresAt}).`);
     throw new ApiError("Authentication required.", 401);
   }
 
@@ -113,6 +125,7 @@ export const verifyJWT = asyncHandler(async (req: any, res: Response, next: Next
 
   const user = userRows[0];
   if (!user) {
+    logger.warn(`JWT Verification failed: user ${userId} not found in DB.`);
     throw new ApiError("Authentication required.", 401);
   }
 

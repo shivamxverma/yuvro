@@ -4,10 +4,13 @@ import {
   AlertCircle,
   ArrowRight,
   Clock3,
+  ExternalLink,
   FolderKanban,
+  FolderOpen,
   GitBranch,
   HelpCircle,
   Layers3,
+  LayoutDashboard,
   Shuffle,
   Sparkles,
 } from 'lucide-react';
@@ -189,7 +192,9 @@ export const LandingPage = () => {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
 
-  const [tab, setTab] = useState<'create' | 'clone'>('create');
+  const [tab, setTab] = useState<'create' | 'clone' | 'open'>('create');
+  const [openSelectedWorkspaceId, setOpenSelectedWorkspaceId] = useState('');
+  const [openSelectedProjectId, setOpenSelectedProjectId] = useState('');
   const [language, setLanguage] = useState('python');
   const [workspaceName, setWorkspaceName] = useState('My Workspace');
   const [projectName, setProjectName] = useState(getRandomSlug());
@@ -209,6 +214,9 @@ export const LandingPage = () => {
   const selectedWorkspaceProjects = selectedWorkspace?.projects ?? [];
   const totalProjects = workspaces.reduce((count, workspace) => count + workspace.projects.length, 0);
 
+  const openPanelWorkspace = workspaces.find(w => w.id === openSelectedWorkspaceId) ?? workspaces[0] ?? null;
+  const openPanelProjects = openPanelWorkspace?.projects ?? [];
+
   const fetchWorkspaces = async () => {
     setLoadingWorkspaces(true);
     try {
@@ -217,9 +225,11 @@ export const LandingPage = () => {
       });
       if (!response.ok) {
         const errData = await response.json().catch(() => ({}));
-        throw new Error(errData.detail || 'Failed to load workspaces.');
+        throw new Error(errData.message || errData.detail || 'Failed to load workspaces.');
       }
-      const payload: WorkspaceListResponse = await response.json();
+      const json = await response.json();
+      // Backend wraps data: { statusCode, message, data: { workspaces: [...] }, success }
+      const payload: WorkspaceListResponse = json.data;
       setWorkspaces(payload.workspaces);
       setSelectedWorkspaceId(currentId => {
         if (currentId && payload.workspaces.some(workspace => workspace.id === currentId)) {
@@ -349,9 +359,11 @@ export const LandingPage = () => {
       });
       if (!response.ok) {
         const errData = await response.json().catch(() => ({}));
-        throw new Error(errData.detail || 'Failed to create project.');
+        throw new Error(errData.message || errData.detail || 'Failed to create project.');
       }
-      const payload: ProjectBootstrapResponse = await response.json();
+      const json = await response.json();
+      // Backend wraps: { data: { workspace: { id }, project: { id } } }
+      const payload: ProjectBootstrapResponse = json.data;
       navigate(`/coding/?workspaceId=${payload.workspace.id}&projectId=${payload.project.id}`);
     } catch (err: any) {
       setError(err.message || 'Something went wrong.');
@@ -400,9 +412,11 @@ export const LandingPage = () => {
       });
       if (!response.ok) {
         const errData = await response.json().catch(() => ({}));
-        throw new Error(errData.detail || 'Failed to clone project.');
+        throw new Error(errData.message || errData.detail || 'Failed to clone project.');
       }
-      const payload: ProjectBootstrapResponse = await response.json();
+      const json = await response.json();
+      // Backend wraps: { data: { workspace: { id }, project: { id } } }
+      const payload: ProjectBootstrapResponse = json.data;
       navigate(`/coding/?workspaceId=${payload.workspace.id}&projectId=${payload.project.id}`);
     } catch (err: any) {
       setError(err.message || 'Something went wrong.');
@@ -488,10 +502,27 @@ export const LandingPage = () => {
                 >
                   Clone from GitHub
                 </button>
+                {workspaces.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setTab('open');
+                      setError('');
+                      if (!openSelectedWorkspaceId && workspaces.length > 0) {
+                        setOpenSelectedWorkspaceId(workspaces[0].id);
+                      }
+                    }}
+                    className={`rounded-full px-4 py-2 text-sm font-semibold transition ${
+                      tab === 'open' ? 'bg-[#ff5a1f] text-white' : 'text-[#6c635b]'
+                    }`}
+                  >
+                    Open Project
+                  </button>
+                )}
               </div>
 
               <div className="rounded-full bg-[#efe8e2] px-3 py-2 text-xs font-semibold text-[#7b7269]">
-                {selectedWorkspace ? `${selectedWorkspace.name} targeted` : 'Auto-create workspace'}
+                {tab === 'open' ? `${totalProjects} project${totalProjects === 1 ? '' : 's'} available` : selectedWorkspace ? `${selectedWorkspace.name} targeted` : 'Auto-create workspace'}
               </div>
             </div>
 
@@ -503,7 +534,108 @@ export const LandingPage = () => {
             ) : null}
 
             <div className="mt-4 text-left">
-              {tab === 'create' ? (
+              {tab === 'open' ? (
+                <div className="space-y-4">
+                  {workspaces.length === 0 ? (
+                    <div className="rounded-[1.75rem] border border-[#eadfd6] bg-white p-6 text-center text-sm text-[#7b7269]">
+                      No workspaces yet. Create your first project above.
+                    </div>
+                  ) : (
+                    <>
+                      <div className="rounded-[1.75rem] border border-[#eadfd6] bg-white p-5">
+                        <PanelLabel>Select Workspace</PanelLabel>
+                        <div className="flex flex-wrap gap-2">
+                          {workspaces.map(ws => (
+                            <button
+                              key={ws.id}
+                              type="button"
+                              onClick={() => {
+                                setOpenSelectedWorkspaceId(ws.id);
+                                setOpenSelectedProjectId('');
+                              }}
+                              className={`rounded-full border px-4 py-2 text-sm font-semibold transition ${
+                                (openSelectedWorkspaceId || workspaces[0]?.id) === ws.id
+                                  ? 'border-[#ff5a1f] bg-[#fff1eb] text-[#ff5a1f]'
+                                  : 'border-[#ece3db] bg-[#faf7f4] text-[#5f5750] hover:border-[#ff5a1f] hover:text-[#ff5a1f]'
+                              }`}
+                            >
+                              {ws.name}
+                              <span className={`ml-2 rounded-full px-2 py-0.5 text-xs ${
+                                (openSelectedWorkspaceId || workspaces[0]?.id) === ws.id
+                                  ? 'bg-[#ff5a1f]/10 text-[#ff5a1f]'
+                                  : 'bg-[#ece3db] text-[#7b7269]'
+                              }`}>
+                                {ws.projects.length}
+                              </span>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="rounded-[1.75rem] border border-[#eadfd6] bg-white p-5">
+                        <PanelLabel>Select Project</PanelLabel>
+                        {openPanelProjects.length === 0 ? (
+                          <div className="py-4 text-center text-sm text-[#7b7269]">
+                            No projects in this workspace yet.
+                          </div>
+                        ) : (
+                          <div className="grid gap-2 sm:grid-cols-2">
+                            {openPanelProjects.map(project => {
+                              const isSelected = openSelectedProjectId === project.id;
+                              return (
+                                <button
+                                  key={project.id}
+                                  type="button"
+                                  onClick={() => setOpenSelectedProjectId(project.id)}
+                                  className={`rounded-[1.25rem] border p-4 text-left transition ${
+                                    isSelected
+                                      ? 'border-[#ff5a1f] bg-[#fff1eb]'
+                                      : 'border-[#ece3db] bg-[#faf7f4] hover:bg-white'
+                                  }`}
+                                >
+                                  <div className="flex items-start justify-between gap-2">
+                                    <div>
+                                      <div className="text-sm font-semibold text-[#2f2f34]">{project.name}</div>
+                                      <div className="mt-1 text-xs text-[#7b7269]">{project.slug}</div>
+                                    </div>
+                                    <span className="rounded-full bg-[#ece3db] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[#7b7269]">
+                                      {project.type}
+                                    </span>
+                                  </div>
+                                  <div className="mt-2 text-xs text-[#9e9590]">
+                                    Updated {formatWorkspaceDate(project.updatedAt)}
+                                  </div>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="flex flex-wrap items-center justify-between gap-3">
+                        <div className="text-sm text-[#7b7269]">
+                          {openSelectedProjectId
+                            ? 'Project selected — ready to open.'
+                            : 'Pick a project from the list above.'}
+                        </div>
+                        <button
+                          type="button"
+                          disabled={!openSelectedProjectId || !openPanelWorkspace}
+                          onClick={() => {
+                            if (openPanelWorkspace && openSelectedProjectId) {
+                              openProject(openPanelWorkspace.id, openSelectedProjectId);
+                            }
+                          }}
+                          className="inline-flex items-center gap-2 rounded-full bg-[#ff5a1f] px-5 py-3 text-sm font-semibold text-white transition hover:brightness-105 disabled:opacity-40"
+                        >
+                          Open Project
+                          <ExternalLink className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </div>
+              ) : tab === 'create' ? (
                 <form onSubmit={handleCreateProject} className="space-y-4">
                   <WorkspaceModeToggle
                     mode={createMode}
@@ -749,15 +881,25 @@ export const LandingPage = () => {
 
         <section className="mt-16 grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
           <div className="rounded-[2.5rem] bg-[#2f2b2c] p-8 text-white sm:p-10">
-            <div className="flex items-center gap-2 text-sm text-white/60">
-              <Layers3 className="h-4 w-4" />
-              Workspace Directory
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 text-sm text-white/60">
+                <LayoutDashboard className="h-4 w-4" />
+                Workspace Dashboard
+              </div>
+              <div className="flex items-center gap-3">
+                <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-semibold text-white/70">
+                  {workspaces.length} workspace{workspaces.length === 1 ? '' : 's'}
+                </span>
+                <span className="rounded-full bg-[#ff5a1f]/20 px-3 py-1 text-xs font-semibold text-[#ff8a62]">
+                  {totalProjects} project{totalProjects === 1 ? '' : 's'}
+                </span>
+              </div>
             </div>
             <div className="mt-4 text-[3.1rem] font-black leading-none tracking-[-0.08em] text-white sm:text-[4.2rem]">
-              Ship anything
+              Your workspaces
             </div>
             <p className="mt-5 max-w-lg text-base leading-7 text-white/70">
-              Reopen any project in a selected workspace, keep related code together, and add new runtimes without rebuilding your context from scratch.
+              Click any project to open it instantly, or select a workspace to target for new projects.
             </p>
 
             <div className="mt-8 space-y-4">
@@ -776,7 +918,7 @@ export const LandingPage = () => {
                     <div
                       key={workspace.id}
                       className={`rounded-[1.8rem] border px-5 py-5 transition ${
-                        selected ? 'border-[#ff8a62] bg-[#3b3536]' : 'border-white/10 bg-white/[0.04]'
+                        selected ? 'border-[#ff8a62] bg-[#3b3536]' : 'border-white/10 bg-white/[0.04] hover:border-white/20'
                       }`}
                     >
                       <button
@@ -791,33 +933,53 @@ export const LandingPage = () => {
                       >
                         <div className="flex flex-wrap items-center justify-between gap-3">
                           <div>
-                            <div className="text-xl font-semibold text-white">{workspace.name}</div>
-                            <div className="mt-1 text-sm text-white/55">
-                              {formatWorkspaceCount(workspace.projects.length)} · Updated {formatWorkspaceDate(workspace.updatedAt)}
+                            <div className="flex items-center gap-2">
+                              <div className="text-xl font-semibold text-white">{workspace.name}</div>
+                              {selected ? (
+                                <span className="rounded-full bg-[#ff5a1f] px-2.5 py-0.5 text-[10px] font-semibold text-white">Active</span>
+                              ) : null}
+                            </div>
+                            <div className="mt-1 flex items-center gap-3 text-sm text-white/55">
+                              <span className="flex items-center gap-1">
+                                <FolderOpen className="h-3.5 w-3.5" />
+                                {formatWorkspaceCount(workspace.projects.length)}
+                              </span>
+                              <span>·</span>
+                              <span>Updated {formatWorkspaceDate(workspace.updatedAt)}</span>
                             </div>
                           </div>
-                          {selected ? (
-                            <span className="rounded-full bg-[#ff5a1f] px-3 py-1 text-xs font-semibold text-white">Active</span>
-                          ) : null}
+                          <div className="rounded-2xl border border-white/10 bg-white/5 px-3 py-2 text-center">
+                            <div className="text-2xl font-black text-white">{workspace.projects.length}</div>
+                            <div className="text-[10px] text-white/50">projects</div>
+                          </div>
                         </div>
                       </button>
 
-                      <div className="mt-4 flex flex-wrap gap-2">
-                        {workspace.projects.length > 0 ? (
-                          workspace.projects.map(project => (
+                      {workspace.projects.length > 0 ? (
+                        <div className="mt-4 grid gap-2 sm:grid-cols-2">
+                          {workspace.projects.map(project => (
                             <button
                               key={project.id}
                               type="button"
                               onClick={() => openProject(workspace.id, project.id)}
-                              className="rounded-full border border-white/10 bg-black/20 px-3 py-2 text-xs font-medium text-white/85 transition hover:border-white/20"
+                              className="group flex items-center justify-between rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-left transition hover:border-[#ff8a62] hover:bg-[#ff5a1f]/10"
                             >
-                              {project.name}
+                              <div>
+                                <div className="text-sm font-semibold text-white/90 group-hover:text-white">{project.name}</div>
+                                <div className="mt-0.5 flex items-center gap-2">
+                                  <span className="rounded-full bg-white/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white/60">
+                                    {project.type}
+                                  </span>
+                                  <span className="text-[10px] text-white/40">{formatWorkspaceDate(project.updatedAt)}</span>
+                                </div>
+                              </div>
+                              <ExternalLink className="h-4 w-4 flex-shrink-0 text-white/30 transition group-hover:text-[#ff8a62]" />
                             </button>
-                          ))
-                        ) : (
-                          <div className="text-sm text-white/50">No projects yet</div>
-                        )}
-                      </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="mt-4 text-sm text-white/40">No projects yet — add one from the panel above.</div>
+                      )}
                     </div>
                   );
                 })

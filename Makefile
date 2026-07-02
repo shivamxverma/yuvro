@@ -1,4 +1,4 @@
-.PHONY: init-service runner client dev build-runner-image setup
+.PHONY: init-service runner client dev build-runner-image setup db-migrate
 
 setup:
 	@echo "Installing dependencies and building local workspace packages..."
@@ -6,6 +6,10 @@ setup:
 	cd init-service && npm install
 	cd orchestrator && npm install
 	cd runner && npm install
+
+db-migrate:
+	@echo "Running database migrations..."
+	cd init-service && bun run src/migrate.ts
 
 init-service:
 	@echo "Starting init-service on port 3001..."

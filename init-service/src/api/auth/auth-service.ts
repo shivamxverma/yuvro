@@ -7,6 +7,7 @@ import { users as usersTable, authMethods as authMethodsTable, sessions as sessi
 import config from "../../config";
 import ApiError from "../../utils/ApiError";
 import { encodeSignedPayload, decodeSignedPayload } from "../../shared/middleware";
+import logger from "../../loaders/logger";
 
 const PASSWORD_PROVIDER = "password";
 const GOOGLE_PROVIDER = "google";
@@ -43,10 +44,13 @@ export function verifyPassword(password: string, encoded: string): boolean {
 
 // ─── Auth Cookie Helpers ──────────────────────────────────────────────────────
 function setAuthCookie(res: any, key: string, value: string, expiresAt: Date): void {
+  // SameSite "lax" blocks cookies on cross-origin POST requests (e.g., /auth/refresh from
+  // localhost:5173 to localhost:3001). Use "none" to allow cross-origin fetch with credentials.
+  // Note: SameSite=None requires Secure=true in production. In local dev, we use Secure=false.
   res.cookie(key, value, {
     httpOnly: true,
     secure: config.AUTH_COOKIE_SECURE,
-    sameSite: "lax",
+    sameSite: config.AUTH_COOKIE_SECURE ? "none" : "lax",
     expires: expiresAt,
     path: "/",
   });
@@ -56,7 +60,7 @@ function clearAuthCookie(res: any, key: string): void {
   res.clearCookie(key, {
     httpOnly: true,
     secure: config.AUTH_COOKIE_SECURE,
-    sameSite: "lax",
+    sameSite: config.AUTH_COOKIE_SECURE ? "none" : "lax",
     path: "/",
   });
 }
@@ -466,6 +470,7 @@ async function exchangeGoogleCode(code: string): Promise<string> {
     if (!idToken) throw new Error();
     return idToken;
   } catch (error) {
+    logger.error("Google OAuth token exchange failed:", error);
     throw new ApiError("Google OAuth failed.", 401);
   }
 }
@@ -490,6 +495,7 @@ async function exchangeGithubCode(code: string): Promise<string> {
     if (!accessToken) throw new Error();
     return accessToken;
   } catch (error) {
+    logger.error("GitHub OAuth token exchange failed:", error);
     throw new ApiError("GitHub OAuth failed.", 401);
   }
 }
@@ -513,6 +519,7 @@ async function verifyGoogleIdToken(idToken: string): Promise<any> {
     return payload;
   } catch (error: any) {
     if (error instanceof ApiError) throw error;
+    logger.error("Google ID token verification failed:", error);
     throw new ApiError("Google OAuth failed.", 401);
   }
 }
@@ -526,7 +533,8 @@ async function fetchGithubUser(accessToken: string): Promise<any> {
       },
     });
     return res.data;
-  } catch {
+  } catch (error) {
+    logger.error("GitHub fetch user profile failed:", error);
     throw new ApiError("GitHub OAuth failed.", 401);
   }
 }
@@ -559,7 +567,8 @@ async function fetchGithubPrimaryEmail(accessToken: string): Promise<string> {
     if (verifiedEmails.length > 0) return verifiedEmails[0];
 
     throw new Error();
-  } catch {
+  } catch (error) {
+    logger.error("GitHub fetch primary email failed:", error);
     throw new ApiError("GitHub account email is not available or not verified.", 401);
   }
 }
