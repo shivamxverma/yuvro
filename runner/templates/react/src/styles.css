@@ -1,0 +1,246 @@
+@import url("https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&display=swap");
+
+:root {
+  color: #f5f1e8;
+  background:
+    radial-gradient(circle at top left, rgba(217, 119, 6, 0.28), transparent 32%),
+    radial-gradient(circle at right, rgba(15, 118, 110, 0.22), transparent 30%),
+    linear-gradient(160deg, #221815 0%, #0f1718 52%, #081012 100%);
+  font-family: "Space Grotesk", "Trebuchet MS", sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+}
+
+body,
+button,
+input,
+code {
+  font: inherit;
+}
+
+button,
+input {
+  outline: none;
+}
+
+button {
+  cursor: pointer;
+}
+
+code {
+  padding: 0.15rem 0.45rem;
+  border-radius: 999px;
+  background: rgba(245, 158, 11, 0.12);
+  color: #fbbf24;
+}
+
+.app-shell {
+  min-height: 100vh;
+  padding: 24px;
+}
+
+.app-panel {
+  width: min(920px, 100%);
+  margin: 0 auto;
+  padding: 28px;
+  border-radius: 32px;
+  border: 1px solid rgba(245, 241, 232, 0.12);
+  background: rgba(18, 24, 24, 0.74);
+  box-shadow: 0 24px 90px rgba(0, 0, 0, 0.28);
+  backdrop-filter: blur(16px);
+}
+
+.hero {
+  margin-bottom: 26px;
+}
+
+.eyebrow {
+  margin: 0 0 12px;
+  color: #f59e0b;
+  text-transform: uppercase;
+  letter-spacing: 0.22em;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+h1 {
+  margin: 0;
+  max-width: 12ch;
+  font-size: clamp(2.8rem, 7vw, 5.6rem);
+  line-height: 0.92;
+}
+
+.copy {
+  margin: 16px 0 0;
+  max-width: 56ch;
+  color: #d8d0c0;
+  font-size: 1rem;
+  line-height: 1.7;
+}
+
+.meta-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  margin-bottom: 22px;
+}
+
+.meta-card,
+.notice,
+.list-panel,
+.todo-card,
+.composer {
+  border: 1px solid rgba(245, 241, 232, 0.1);
+  background: rgba(255, 248, 235, 0.04);
+}
+
+.meta-card {
+  padding: 16px 18px;
+  border-radius: 20px;
+}
+
+.meta-label,
+.composer-label {
+  display: block;
+  margin-bottom: 6px;
+  color: #9bb0ad;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+}
+
+.composer {
+  margin-bottom: 14px;
+  padding: 18px;
+  border-radius: 24px;
+}
+
+.composer-row {
+  display: flex;
+  gap: 12px;
+}
+
+.composer-row input {
+  flex: 1;
+  min-width: 0;
+  padding: 14px 16px;
+  border-radius: 18px;
+  border: 1px solid rgba(245, 241, 232, 0.12);
+  background: rgba(8, 16, 18, 0.7);
+  color: #f5f1e8;
+}
+
+.composer-row button,
+.ghost {
+  border: 0;
+  border-radius: 18px;
+  padding: 0 18px;
+  font-weight: 700;
+  color: #1a1208;
+  background: linear-gradient(135deg, #fbbf24, #fb923c);
+}
+
+.composer-row button:disabled {
+  opacity: 0.7;
+  cursor: progress;
+}
+
+.ghost {
+  padding: 10px 14px;
+}
+
+.notice {
+  margin-bottom: 12px;
+  padding: 14px 16px;
+  border-radius: 18px;
+  color: #d8d0c0;
+}
+
+.notice.error {
+  border-color: rgba(248, 113, 113, 0.28);
+  background: rgba(127, 29, 29, 0.24);
+  color: #fecaca;
+}
+
+.list-panel {
+  margin-top: 18px;
+  padding: 20px;
+  border-radius: 26px;
+}
+
+.list-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.list-header h2 {
+  margin: 0;
+  font-size: 1.4rem;
+}
+
+.todo-list {
+  display: grid;
+  gap: 12px;
+}
+
+.todo-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 18px;
+  border-radius: 20px;
+  transition: transform 160ms ease, border-color 160ms ease;
+}
+
+.todo-card:hover {
+  transform: translateY(-1px);
+  border-color: rgba(251, 191, 36, 0.4);
+}
+
+.todo-card h3 {
+  margin: 6px 0 0;
+  font-size: 1.05rem;
+}
+
+.todo-id {
+  color: #f59e0b;
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.todo-card time,
+.empty {
+  color: #9bb0ad;
+}
+
+@media (max-width: 760px) {
+  .app-panel {
+    padding: 22px;
+  }
+
+  .meta-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .composer-row,
+  .todo-card,
+  .list-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .todo-card time {
+    text-align: left;
+  }
+}

@@ -1,12 +1,10 @@
-FROM python:3.10-slim
+FROM node:22-slim
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
     bash \
     git \
     g++ \
-    nodejs \
-    npm \
     procps \
     curl \
     && rm -rf /var/lib/apt/lists/*
@@ -14,13 +12,19 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Set up working directory inside the container for the runner
 WORKDIR /runner-app
 
-# Copy requirements and install python packages
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+# Copy dependency configs
+COPY package.json ./
 
-# Copy runner app code and scripts
-COPY app ./app
+# Install npm packages
+RUN npm install --omit=dev
+
+# Copy tsconfig and source files
+COPY tsconfig.json ./
+COPY src ./src
 COPY scripts ./scripts
+
+# Compile TypeScript
+RUN npm install typescript -D && npm run build
 
 RUN install -m 0755 /runner-app/scripts/run-cpp /usr/local/bin/run-cpp
 
@@ -36,4 +40,4 @@ ENV IS_CONTAINER=true
 ENV PORT=3002
 
 # Start the runner service
-CMD ["python", "-m", "app.main"]
+CMD ["node", "dist/index.js"]
