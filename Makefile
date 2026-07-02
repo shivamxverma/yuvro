@@ -1,12 +1,19 @@
-.PHONY: init-service runner client dev build-runner-image
+.PHONY: init-service runner client dev build-runner-image setup
+
+setup:
+	@echo "Installing dependencies and building local workspace packages..."
+	cd db-schema && npm install && npm run build
+	cd init-service && npm install
+	cd orchestrator && npm install
+	cd runner && npm install
 
 init-service:
 	@echo "Starting init-service on port 3001..."
-	cd init-service && ./.venv/bin/python -m uvicorn app.main:app --host 0.0.0.0 --port 3001 --reload
+	cd init-service && bun run dev
 
 runner:
 	@echo "Starting orchestrator on port 3002..."
-	cd orchestrator && ./.venv/bin/python -m uvicorn app.main:app --host 0.0.0.0 --port 3002 --reload
+	cd orchestrator && bun run dev
 
 client:
 	@echo "Starting client on port 5173..."

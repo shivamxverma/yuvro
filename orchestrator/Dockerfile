@@ -1,14 +1,16 @@
-FROM python:3.10-slim
+FROM node:22-slim
 
-WORKDIR /orchestrator
+WORKDIR /app/orchestrator
 
-COPY orchestrator/requirements.txt ./requirements.txt
-RUN pip install --no-cache-dir -r requirements.txt
+COPY orchestrator/package.json ./
+RUN npm install
 
-COPY orchestrator/app ./app
+COPY orchestrator/tsconfig.json ./
+COPY orchestrator/src ./src
+
+RUN npm run build
 
 EXPOSE 3002
-
 ENV PORT=3002
 
-CMD ["python", "-m", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "3002"]
+CMD ["node", "dist/index.js"]
