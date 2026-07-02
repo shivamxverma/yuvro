@@ -4,6 +4,8 @@ FROM node:22-slim
 RUN apt-get update && apt-get install -y --no-install-recommends \
     bash \
     git \
+    make \
+    python3 \
     g++ \
     procps \
     curl \

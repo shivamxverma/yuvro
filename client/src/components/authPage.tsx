@@ -8,7 +8,7 @@ type Mode = "signin" | "signup";
 
 function GithubMark() {
   return (
-    <svg viewBox="0 0 24 24" aria-hidden="true" className="h-5 w-5 fill-current">
+    <svg viewBox="0 0 24 24" aria-hidden="true" className="h-4 w-4 fill-neutral-700">
       <path d="M12 0C5.373 0 0 5.373 0 12a12.01 12.01 0 0 0 8.207 11.387c.6.111.793-.261.793-.577v-2.234c-3.338.726-4.032-1.416-4.032-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.744.082-.729.082-.729 1.205.085 1.839 1.237 1.839 1.237 1.07 1.834 2.808 1.305 3.493.998.107-.776.418-1.305.761-1.605-2.665-.304-5.466-1.332-5.466-5.93 0-1.312.469-2.381 1.236-3.221-.124-.304-.535-1.524.117-3.176 0 0 1.008-.322 3.3 1.229A11.49 11.49 0 0 1 12 5.803c1.02.005 2.047.138 3.006.404 2.29-1.551 3.298-1.229 3.298-1.229.651 1.652.24 2.872.117 3.176.767.84 1.235 1.909 1.235 3.221 0 4.609-2.804 5.624-5.475 5.921.43.371.814 1.102.814 2.222v3.293c0 .319.192.69.8.576A12.01 12.01 0 0 0 24 12c0-6.627-5.373-12-12-12Z" />
     </svg>
   );
@@ -62,179 +62,145 @@ export function AuthPage() {
   };
 
   return (
-    <div className="relative min-h-screen overflow-y-auto bg-[#030712] px-4 py-12 text-slate-100">
-      <div className="absolute left-[-10%] top-[-10%] h-80 w-80 rounded-full bg-cyan-500/10 blur-3xl" />
-      <div className="absolute bottom-[-10%] right-[-10%] h-80 w-80 rounded-full bg-emerald-500/10 blur-3xl" />
-
-      <div className="relative mx-auto flex min-h-[calc(100vh-6rem)] max-w-5xl items-center justify-center">
-        <div className="grid w-full overflow-hidden rounded-3xl border border-slate-800 bg-slate-950/70 shadow-2xl shadow-cyan-950/20 backdrop-blur xl:grid-cols-[1.15fr_0.85fr]">
-          <section className="hidden border-r border-slate-800 bg-[radial-gradient(circle_at_top_left,_rgba(34,211,238,0.16),_transparent_30%),linear-gradient(180deg,#07111f_0%,#020617_100%)] p-10 xl:block">
-            <div className="mb-10 flex items-center gap-3">
-              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-cyan-400 font-black text-slate-950">
-                Y
-              </div>
-              <div>
-                <div className="text-xl font-semibold text-white">Yuvro</div>
-                <div className="text-sm text-slate-400">Cloud IDE for students</div>
-              </div>
-            </div>
-
-            <div className="space-y-6 text-left">
-              <h1 className="m-0 max-w-md text-5xl font-black leading-tight text-white">
-                Start coding without touching local setup.
-              </h1>
-              <p className="max-w-md text-base leading-7 text-slate-300">
-                Sign in to create private workspaces, launch frontend and backend projects,
-                and return later with your files, environment config, and database data intact.
-              </p>
-              <div className="grid gap-3 pt-4 text-sm text-slate-200">
-                <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
-                  Instant starter environments for Python, Node, React, and Go.
-                </div>
-                <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
-                  Sandboxed execution and full-stack preview in one browser tab.
-                </div>
-                <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
-                  Persistent source files and database data with disposable containers.
-                </div>
-              </div>
-            </div>
-          </section>
-
-          <section className="p-6 sm:p-8 xl:p-10">
-            <div className="mx-auto max-w-md text-left">
-              <div className="mb-8 xl:hidden">
-                <div className="mb-3 text-sm font-semibold uppercase tracking-[0.3em] text-cyan-300">
-                  Yuvro
-                </div>
-                <h1 className="m-0 text-3xl font-black text-white">Cloud IDE access</h1>
-              </div>
-
-              <div className="mb-6 inline-flex rounded-full border border-slate-800 bg-slate-900 p-1">
-                {(["signin", "signup"] as const).map((value) => (
-                  <button
-                    key={value}
-                    type="button"
-                    onClick={() => {
-                      setMode(value);
-                      setError("");
-                    }}
-                    className={`rounded-full px-4 py-2 text-sm font-semibold transition ${
-                      mode === value
-                        ? "bg-cyan-400 text-slate-950"
-                        : "text-slate-400 hover:text-white"
-                    }`}
-                  >
-                    {value === "signin" ? "Sign in" : "Create account"}
-                  </button>
-                ))}
-              </div>
-
-              <form onSubmit={handleSubmit} className="space-y-4">
-                {isSignup && (
-                  <label className="block">
-                    <span className="mb-2 block text-xs font-bold uppercase tracking-[0.2em] text-slate-500">
-                      Display Name
-                    </span>
-                    <div className="flex items-center gap-3 rounded-2xl border border-slate-800 bg-slate-900/80 px-4 py-3">
-                      <UserRound className="h-4 w-4 text-slate-500" />
-                      <input
-                        value={name}
-                        onChange={(e) => setName(e.target.value)}
-                        placeholder="Ada Lovelace"
-                        className="w-full bg-transparent text-sm text-white outline-none placeholder:text-slate-600"
-                      />
-                    </div>
-                  </label>
-                )}
-
-                <label className="block">
-                  <span className="mb-2 block text-xs font-bold uppercase tracking-[0.2em] text-slate-500">
-                    Email
-                  </span>
-                  <div className="flex items-center gap-3 rounded-2xl border border-slate-800 bg-slate-900/80 px-4 py-3">
-                    <Mail className="h-4 w-4 text-slate-500" />
-                    <input
-                      type="email"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      placeholder="student@example.com"
-                      autoComplete="email"
-                      required
-                      className="w-full bg-transparent text-sm text-white outline-none placeholder:text-slate-600"
-                    />
-                  </div>
-                </label>
-
-                <label className="block">
-                  <span className="mb-2 block text-xs font-bold uppercase tracking-[0.2em] text-slate-500">
-                    Password
-                  </span>
-                  <div className="flex items-center gap-3 rounded-2xl border border-slate-800 bg-slate-900/80 px-4 py-3">
-                    <LockKeyhole className="h-4 w-4 text-slate-500" />
-                    <input
-                      type="password"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      placeholder="At least 8 characters"
-                      autoComplete={isSignup ? "new-password" : "current-password"}
-                      required
-                      minLength={8}
-                      className="w-full bg-transparent text-sm text-white outline-none placeholder:text-slate-600"
-                    />
-                  </div>
-                </label>
-
-                {(error || oauthErrorMessage) && (
-                  <div className="rounded-2xl border border-rose-500/30 bg-rose-950/30 px-4 py-3 text-sm text-rose-200">
-                    {error || oauthErrorMessage}
-                  </div>
-                )}
-
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="w-full rounded-2xl bg-cyan-400 px-4 py-3 text-sm font-bold text-slate-950 transition hover:bg-cyan-300 disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  {loading ? "Submitting..." : isSignup ? "Create account" : "Sign in"}
-                </button>
-
-                <div className="flex items-center gap-3 py-1">
-                  <div className="h-px flex-1 bg-slate-800" />
-                  <span className="text-xs font-semibold uppercase tracking-[0.25em] text-slate-600">Or</span>
-                  <div className="h-px flex-1 bg-slate-800" />
-                </div>
-
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <button
-                    type="button"
-                    onClick={handleGoogleSignIn}
-                    className="flex w-full items-center justify-center gap-3 rounded-2xl border border-slate-800 bg-slate-900/80 px-4 py-3 text-sm font-semibold text-slate-100 transition hover:border-slate-700 hover:bg-slate-900"
-                  >
-                    <span className="flex h-5 w-5 items-center justify-center rounded-full bg-white text-[11px] font-bold text-slate-950">
-                      G
-                    </span>
-                    Continue with Google
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={handleGitHubSignIn}
-                    className="flex w-full items-center justify-center gap-3 rounded-2xl border border-slate-800 bg-slate-900/80 px-4 py-3 text-sm font-semibold text-slate-100 transition hover:border-slate-700 hover:bg-slate-900"
-                  >
-                    <GithubMark />
-                    Continue with GitHub
-                  </button>
-                </div>
-              </form>
-
-              <p className="mt-5 text-sm leading-6 text-slate-500">
-                This is the first authentication layer only. Provider linking can be added later
-                without replacing the stored user record.
-              </p>
-            </div>
-          </section>
+    <div className="relative flex min-h-screen items-center justify-center bg-neutral-50/60 px-4 py-12 text-neutral-800">
+      <div className="w-full max-w-md bg-white border border-neutral-200/80 rounded-2xl shadow-xl shadow-neutral-100/50 p-8 transition-all">
+        {/* Logo and Header */}
+        <div className="flex flex-col items-center text-center mb-8">
+          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-neutral-900 font-black text-white text-lg shadow-sm mb-4">
+            Y
+          </div>
+          <h1 className="text-xl font-bold tracking-tight text-neutral-900">Welcome to Yuvro</h1>
+          <p className="mt-1 text-sm text-neutral-500">Sign in to access your cloud workspaces</p>
         </div>
+
+        {/* Tab Toggle */}
+        <div className="grid grid-cols-2 gap-1 rounded-lg bg-neutral-100 p-1 mb-6">
+          {(["signin", "signup"] as const).map((value) => (
+            <button
+              key={value}
+              type="button"
+              onClick={() => {
+                setMode(value);
+                setError("");
+              }}
+              className={`rounded-md py-1.5 text-xs font-medium transition-all ${
+                mode === value
+                  ? "bg-white text-neutral-900 shadow-sm"
+                  : "text-neutral-500 hover:text-neutral-800"
+              }`}
+            >
+              {value === "signin" ? "Sign in" : "Create account"}
+            </button>
+          ))}
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          {isSignup && (
+            <label className="block space-y-1.5">
+              <span className="text-xs font-semibold text-neutral-500 uppercase tracking-wider">
+                Display Name
+              </span>
+              <div className="relative flex items-center">
+                <UserRound className="absolute left-3.5 h-4 w-4 text-neutral-400" />
+                <input
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="Ada Lovelace"
+                  required
+                  className="w-full rounded-xl border border-neutral-200 bg-white py-2.5 pl-10 pr-4 text-sm text-neutral-900 outline-none placeholder:text-neutral-400 focus:border-neutral-900 focus:ring-1 focus:ring-neutral-900 transition-all"
+                />
+              </div>
+            </label>
+          )}
+
+          <label className="block space-y-1.5">
+            <span className="text-xs font-semibold text-neutral-500 uppercase tracking-wider">
+              Email
+            </span>
+            <div className="relative flex items-center">
+              <Mail className="absolute left-3.5 h-4 w-4 text-neutral-400" />
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="student@example.com"
+                autoComplete="email"
+                required
+                className="w-full rounded-xl border border-neutral-200 bg-white py-2.5 pl-10 pr-4 text-sm text-neutral-900 outline-none placeholder:text-neutral-400 focus:border-neutral-900 focus:ring-1 focus:ring-neutral-900 transition-all"
+              />
+            </div>
+          </label>
+
+          <label className="block space-y-1.5">
+            <span className="text-xs font-semibold text-neutral-500 uppercase tracking-wider">
+              Password
+            </span>
+            <div className="relative flex items-center">
+              <LockKeyhole className="absolute left-3.5 h-4 w-4 text-neutral-400" />
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="At least 8 characters"
+                autoComplete={isSignup ? "new-password" : "current-password"}
+                required
+                minLength={8}
+                className="w-full rounded-xl border border-neutral-200 bg-white py-2.5 pl-10 pr-4 text-sm text-neutral-900 outline-none placeholder:text-neutral-400 focus:border-neutral-900 focus:ring-1 focus:ring-neutral-900 transition-all"
+              />
+            </div>
+          </label>
+
+          {(error || oauthErrorMessage) && (
+            <div className="rounded-xl border border-rose-100 bg-rose-50/50 px-4 py-3 text-sm text-rose-600">
+              {error || oauthErrorMessage}
+            </div>
+          )}
+
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full rounded-xl bg-neutral-900 py-2.5 text-sm font-semibold text-white transition hover:bg-neutral-800 focus:outline-none focus:ring-2 focus:ring-neutral-900 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {loading ? "Submitting..." : isSignup ? "Create account" : "Sign in"}
+          </button>
+
+          <div className="relative flex py-2 items-center">
+            <div className="flex-grow border-t border-neutral-100"></div>
+            <span className="flex-shrink mx-3 text-[10px] text-neutral-400 uppercase tracking-widest">
+              Or continue with
+            </span>
+            <div className="flex-grow border-t border-neutral-100"></div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <button
+              type="button"
+              onClick={handleGoogleSignIn}
+              className="flex w-full items-center justify-center gap-2 rounded-xl border border-neutral-200 bg-white py-2.5 px-4 text-sm font-semibold text-neutral-700 transition hover:bg-neutral-50 active:bg-neutral-100 focus:outline-none focus:ring-2 focus:ring-neutral-200"
+            >
+              <svg className="h-4 w-4" viewBox="0 0 24 24">
+                <path
+                  fill="#EA4335"
+                  d="M12.24 10.285V14.4h6.887c-.648 2.41-2.519 4.114-5.136 4.114-3.41 0-6.177-2.767-6.177-6.177S10.584 6.16 13.993 6.16c1.558 0 2.977.579 4.062 1.53l3.057-3.057C19.262 2.913 16.793 2 13.993 2 8.474 2 4 6.474 4 12s4.474 10 9.993 10c5.777 0 9.643-4.06 9.643-9.8 0-.665-.06-1.3-.176-1.915H12.24Z"
+                />
+              </svg>
+              <span>Google</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={handleGitHubSignIn}
+              className="flex w-full items-center justify-center gap-2 rounded-xl border border-neutral-200 bg-white py-2.5 px-4 text-sm font-semibold text-neutral-700 transition hover:bg-neutral-50 active:bg-neutral-100 focus:outline-none focus:ring-2 focus:ring-neutral-200"
+            >
+              <GithubMark />
+              <span>GitHub</span>
+            </button>
+          </div>
+        </form>
+
+        <p className="mt-6 text-center text-[11px] text-neutral-400 leading-normal">
+          This is the first authentication layer only. Provider linking can be added later.
+        </p>
       </div>
     </div>
   );

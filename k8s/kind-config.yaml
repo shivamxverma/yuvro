@@ -9,5 +9,5 @@ nodes:
   - containerPort: 443
     hostPort: 8443
   extraMounts:
-  - hostPath: /Users/shivamverma/Desktop/yuvro-assignment/workspaces
+  - hostPath: /Users/shivamverma/Desktop/projects/yuvro/workspaces
     containerPath: /workspaces-host

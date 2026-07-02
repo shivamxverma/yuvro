@@ -22,7 +22,7 @@ const corsOptions = {
 export default ({ app }: { app: express.Application }): void => {
   app.use(express.json());
   app.use(cors(corsOptions));
-  app.options("*", cors(corsOptions));
+  app.options("", cors(corsOptions));
   app.use(cookieParser());
 
   app.get("/health", (req, res) => {

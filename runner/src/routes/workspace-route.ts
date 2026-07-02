@@ -192,7 +192,7 @@ export async function handleProxy(
     });
 
     let content = Buffer.from(response.data);
-    const contentType = (response.headers["content-type"] || "").toLowerCase();
+    const contentType = String(response.headers["content-type"] || "").toLowerCase();
 
     // Perform path re-writings for html and javascript text files
     if (contentType.startsWith("text/html")) {
@@ -238,15 +238,16 @@ export async function handleProxy(
 
 // Proxy routes matching the paths directly
 router.all("/proxy/:repl_id/:container_port/:path(*)", (req: Request, res: Response) => {
-  const { repl_id, container_port } = req.params;
-  const reqPath = req.params.path || "";
-  handleProxy(repl_id, parseInt(container_port, 10), reqPath, req, res);
+  const replId = typeof req.params.repl_id === "string" ? req.params.repl_id : "";
+  const containerPort = typeof req.params.container_port === "string" ? req.params.container_port : "";
+  const reqPath = typeof req.params.path === "string" ? req.params.path : "";
+  handleProxy(replId, parseInt(containerPort, 10), reqPath, req, res);
 });
 
 router.all("/proxy/:repl_id/:path(*)", (req: Request, res: Response) => {
-  const { repl_id } = req.params;
-  const reqPath = req.params.path || "";
-  handleProxy(repl_id, 8000, reqPath, req, res);
+  const replId = typeof req.params.repl_id === "string" ? req.params.repl_id : "";
+  const reqPath = typeof req.params.path === "string" ? req.params.path : "";
+  handleProxy(replId, 8000, reqPath, req, res);
 });
 
 export default router;
