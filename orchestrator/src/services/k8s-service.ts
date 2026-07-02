@@ -79,7 +79,7 @@ async function createOrPatchResource(
     await readFn();
     await patchFn();
   } catch (error: any) {
-    if (error.response?.statusCode === 404 || error.statusCode === 404) {
+    if (error.code === 404 || error.response?.statusCode === 404 || error.statusCode === 404) {
       await createFn();
     } else {
       throw error;
@@ -191,21 +191,21 @@ export async function ensureRunnerResources(workspaceId: string, projectId: stri
 
   // Deploy resources
   await createOrPatchResource(
-    () => appsApi.readNamespacedDeployment(resourceName, namespace),
-    () => appsApi.createNamespacedDeployment(namespace, deploymentBody),
-    () => appsApi.replaceNamespacedDeployment(resourceName, namespace, deploymentBody)
+    () => appsApi.readNamespacedDeployment({ name: resourceName, namespace }),
+    () => appsApi.createNamespacedDeployment({ namespace, body: deploymentBody }),
+    () => appsApi.replaceNamespacedDeployment({ name: resourceName, namespace, body: deploymentBody })
   );
 
   await createOrPatchResource(
-    () => coreApi.readNamespacedService(resourceName, namespace),
-    () => coreApi.createNamespacedService(namespace, serviceBody),
-    () => coreApi.replaceNamespacedService(resourceName, namespace, serviceBody)
+    () => coreApi.readNamespacedService({ name: resourceName, namespace }),
+    () => coreApi.createNamespacedService({ namespace, body: serviceBody }),
+    () => coreApi.replaceNamespacedService({ name: resourceName, namespace, body: serviceBody })
   );
 
   await createOrPatchResource(
-    () => networkingApi.readNamespacedIngress(resourceName, namespace),
-    () => networkingApi.createNamespacedIngress(namespace, ingressBody),
-    () => networkingApi.replaceNamespacedIngress(resourceName, namespace, ingressBody)
+    () => networkingApi.readNamespacedIngress({ name: resourceName, namespace }),
+    () => networkingApi.createNamespacedIngress({ namespace, body: ingressBody }),
+    () => networkingApi.replaceNamespacedIngress({ name: resourceName, namespace, body: ingressBody })
   );
 
   return runnerPublicBaseUrl(projectId);
@@ -218,14 +218,14 @@ async function ensureDbSecret(projectId: string, engine: string): Promise<string
   const labels = { app: resourceName, "project-id": projectId, engine };
 
   try {
-    const res = await coreApi.readNamespacedSecret(secretName, namespace);
-    const passwordEncoded = res.body.data?.password;
+    const res = await coreApi.readNamespacedSecret({ name: secretName, namespace });
+    const passwordEncoded = res.data?.password;
     if (!passwordEncoded) {
       throw new Error(`Database secret '${secretName}' is missing the password key.`);
     }
     return Buffer.from(passwordEncoded, "base64").toString("utf-8");
   } catch (error: any) {
-    if (error.response?.statusCode !== 404 && error.statusCode !== 404) {
+    if (error.code !== 404 && error.response?.statusCode !== 404 && error.statusCode !== 404) {
       throw error;
     }
   }
@@ -237,7 +237,7 @@ async function ensureDbSecret(projectId: string, engine: string): Promise<string
     stringData: { password },
   };
 
-  await coreApi.createNamespacedSecret(namespace, secretBody);
+  await coreApi.createNamespacedSecret({ namespace, body: secretBody });
   return password;
 }
 
@@ -248,10 +248,10 @@ async function ensureDbPvc(projectId: string, engine: string): Promise<void> {
   const labels = { app: resourceName, "project-id": projectId, engine };
 
   try {
-    await coreApi.readNamespacedPersistentVolumeClaim(pvcName, namespace);
+    await coreApi.readNamespacedPersistentVolumeClaim({ name: pvcName, namespace });
     return;
   } catch (error: any) {
-    if (error.response?.statusCode !== 404 && error.statusCode !== 404) {
+    if (error.code !== 404 && error.response?.statusCode !== 404 && error.statusCode !== 404) {
       throw error;
     }
   }
@@ -269,7 +269,7 @@ async function ensureDbPvc(projectId: string, engine: string): Promise<void> {
     spec: pvcSpec,
   };
 
-  await coreApi.createNamespacedPersistentVolumeClaim(namespace, pvcBody);
+  await coreApi.createNamespacedPersistentVolumeClaim({ namespace, body: pvcBody });
 }
 
 export async function ensureDatabaseResources(projectId: string, engine: string): Promise<any> {
@@ -380,15 +380,15 @@ export async function ensureDatabaseResources(projectId: string, engine: string)
   };
 
   await createOrPatchResource(
-    () => appsApi.readNamespacedDeployment(resourceName, namespace),
-    () => appsApi.createNamespacedDeployment(namespace, deploymentBody),
-    () => appsApi.replaceNamespacedDeployment(resourceName, namespace, deploymentBody)
+    () => appsApi.readNamespacedDeployment({ name: resourceName, namespace }),
+    () => appsApi.createNamespacedDeployment({ namespace, body: deploymentBody }),
+    () => appsApi.replaceNamespacedDeployment({ name: resourceName, namespace, body: deploymentBody })
   );
 
   await createOrPatchResource(
-    () => coreApi.readNamespacedService(resourceName, namespace),
-    () => coreApi.createNamespacedService(namespace, serviceBody),
-    () => coreApi.replaceNamespacedService(resourceName, namespace, serviceBody)
+    () => coreApi.readNamespacedService({ name: resourceName, namespace }),
+    () => coreApi.createNamespacedService({ namespace, body: serviceBody }),
+    () => coreApi.replaceNamespacedService({ name: resourceName, namespace, body: serviceBody })
   );
 
   return {
@@ -415,16 +415,12 @@ export async function waitForDatabaseResources(
 
   while (Date.now() < deadline) {
     try {
-      const podRes = await coreApi.listNamespacedPod(
+      const podRes = await coreApi.listNamespacedPod({
         namespace,
-        undefined,
-        undefined,
-        undefined,
-        undefined,
-        labelSelector
-      );
+        labelSelector,
+      });
       
-      const pods = podRes.body.items || [];
+      const pods = podRes.items || [];
       let readyPod: k8s.V1Pod | undefined;
 
       if (pods.length > 0) {
@@ -459,10 +455,10 @@ export async function waitForDatabaseResources(
       if (readyPod) {
         let endpoints: k8s.V1Endpoints | undefined;
         try {
-          const epRes = await coreApi.readNamespacedEndpoints(resourceName, namespace);
-          endpoints = epRes.body;
+          const epRes = await coreApi.readNamespacedEndpoints({ name: resourceName, namespace });
+          endpoints = epRes;
         } catch (e: any) {
-          if (e.response?.statusCode !== 404 && e.statusCode !== 404) {
+          if (e.code !== 404 && e.response?.statusCode !== 404 && e.statusCode !== 404) {
             throw e;
           }
         }
