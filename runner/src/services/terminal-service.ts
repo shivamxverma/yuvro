@@ -129,6 +129,14 @@ export class TerminalManager {
       // Ignore process termination errors
     }
   }
+
+  public killAll() {
+    logToFile(`[PTY Kill All] Cleaning up all active sessions`);
+    const replIds = Array.from(this.sessions.keys());
+    for (const replId of replIds) {
+      this.clearRepl(replId);
+    }
+  }
 }
 
 export const terminalManager = new TerminalManager();

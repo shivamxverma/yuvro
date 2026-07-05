@@ -3,22 +3,12 @@ import path from "path";
 import sqlite3 from "sqlite3";
 import pg from "pg";
 import mysql from "mysql2/promise";
-import { BASE_DIR } from "../config";
+import { BASE_DIR } from "../../config";
+import { DbConnection } from "./db-types";
+import ApiError from "../../utils/ApiError";
 
 const CONFIG_DIR = path.join(BASE_DIR, ".yuvro");
 const CONFIG_PATH = path.join(CONFIG_DIR, "db_connections.json");
-
-export interface DbConnection {
-  id: string;
-  name: string;
-  type: "postgres" | "mysql" | "sqlite";
-  host?: string;
-  port?: number;
-  user?: string;
-  password?: string;
-  database?: string;
-  path?: string;
-}
 
 export function loadConnections(): DbConnection[] {
   if (!fs.existsSync(CONFIG_PATH)) {
@@ -101,7 +91,7 @@ function normalizeQuery(query: string): string {
     if (normalized.startsWith("/*")) {
       const end = normalized.indexOf("*/");
       if (end === -1) {
-        throw new Error("Unterminated SQL comment.");
+        throw new ApiError("Unterminated SQL comment.", 400);
       }
       normalized = normalized.substring(end + 2).trim();
     }
@@ -112,7 +102,7 @@ function normalizeQuery(query: string): string {
 export function validateReadonlyQuery(query: string): void {
   const normalized = normalizeQuery(query);
   if (!normalized) {
-    throw new Error("Query cannot be empty.");
+    throw new ApiError("Query cannot be empty.", 400);
   }
 
   let trimmed = normalized.trim();
@@ -120,20 +110,21 @@ export function validateReadonlyQuery(query: string): void {
     trimmed = trimmed.substring(0, trimmed.length - 1).trim();
   }
   if (trimmed.includes(";")) {
-    throw new Error("Only a single read-only statement is allowed.");
+    throw new ApiError("Only a single read-only statement is allowed.", 400);
   }
 
   const firstWordMatch = trimmed.match(/^([a-zA-Z]+)/);
   const firstWord = firstWordMatch ? firstWordMatch[1].toLowerCase() : "";
   if (!READONLY_START_KEYWORDS.has(firstWord)) {
-    throw new Error(`Only read-only queries are allowed. Received '${firstWord || "unknown"}'.`);
+    throw new ApiError(`Only read-only queries are allowed. Received '${firstWord || "unknown"}'.`, 400);
   }
 
   const wordPattern = new RegExp(`\\b(${Array.from(DANGEROUS_KEYWORDS).join("|")})\\b`, "i");
   const dangerousMatch = trimmed.match(wordPattern);
   if (dangerousMatch) {
-    throw new Error(
-      `Write operation '${dangerousMatch[1].toUpperCase()}' is not allowed in this read-only viewer.`
+    throw new ApiError(
+      `Write operation '${dangerousMatch[1].toUpperCase()}' is not allowed in this read-only viewer.`,
+      400
     );
   }
 }
@@ -153,10 +144,10 @@ export class SQLiteAdapter implements BaseDbAdapter {
     const cleanPath = relativePath.replace(/^\//, "");
     this.absPath = path.resolve(BASE_DIR, cleanPath);
     if (!this.absPath.startsWith(path.resolve(BASE_DIR))) {
-      throw new Error("Access denied: path is outside workspace directory.");
+      throw new ApiError("Access denied: path is outside workspace directory.", 403);
     }
     if (!fs.existsSync(this.absPath)) {
-      throw new Error(`Database file not found: ${relativePath}`);
+      throw new ApiError(`Database file not found: ${relativePath}`, 404);
     }
   }
 
@@ -503,6 +494,6 @@ export function getAdapterForConnection(connectionId: string): BaseDbAdapter {
   try {
     return new SQLiteAdapter(connectionId);
   } catch {
-    throw new Error(`Database connection profile '${connectionId}' not found.`);
+    throw new ApiError(`Database connection profile '${connectionId}' not found.`, 404);
   }
 }
