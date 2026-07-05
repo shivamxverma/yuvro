@@ -1,23 +1,30 @@
 import express from "express";
-import cors from "cors";
-import router from "./api/routes";
+import loaders from "./loaders";
+import logger from "./loaders/logger";
 import config from "./config";
 
-const app = express();
+async function startServer() {
+  const app = express();
+  await loaders({ expressApp: app });
 
-app.use(express.json());
-app.use(
-  cors({
-    origin: "*",
-    credentials: true,
-    methods: "*",
-    allowedHeaders: "*",
-  })
-);
+  const port = Number(config.PORT) || 3002;
+  const server = app.listen(port, "0.0.0.0", () => {
+    logger.info(`🛡️  Orchestrator listening on port: ${port}  🛡️`);
+  }).on("error", (err) => {
+    logger.error("Error in server", err);
+    process.exit(1);
+  });
 
-app.use(router);
+  const shutdown = async (signal: string) => {
+    logger.info(`${signal} received, closing server gracefully...`);
+    server.close(() => {
+      logger.info("HTTP server closed.");
+      process.exit(0);
+    });
+  };
 
-const port = Number(config.PORT) || 3002;
-app.listen(port, "0.0.0.0", () => {
-  console.log(`🛡️ Orchestrator listening on port: ${port} 🛡️`);
-});
+  process.on("SIGTERM", () => shutdown("SIGTERM"));
+  process.on("SIGINT", () => shutdown("SIGINT"));
+}
+
+startServer();
